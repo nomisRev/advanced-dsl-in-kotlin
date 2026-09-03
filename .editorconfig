@@ -1,0 +1,14 @@
+root = true
+
+# IntelliJ recognizes only the first YAML block as frontmatter. Slide decks use
+# @formatter:off after that block so later Slidev frontmatter stays valid YAML.
+[*.md]
+indent_style = space
+indent_size = 2
+ij_formatter_tags_enabled = true
+
+[{*.kt,*.kts}]
+indent_style = space
+indent_size = 2
+ij_kotlin_indent_size = 2
+ij_kotlin_continuation_indent_size = 2
