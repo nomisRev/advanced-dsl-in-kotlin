@@ -16,7 +16,7 @@ kodee: wave
 
 # `Any?` accepts anything
 
-<DrawnAnnotation text="{ it }" label="Compiles, and writes `toString()` into the cell" color="red"  :geometry="{ label: { x: 0.5448, y: 0.3495 }, connector: { type: 'quadratic', start: { x: 0.2888, y: 0.3244 }, control: { x: 0.3027, y: 0.3508 }, end: { x: 0.3200, y: 0.3491 } } }"/>
+<DrawnAnnotation text="{ it }" label="Compiles, and writes `toString()` into the cell" color="red"  :geometry="{ label: { x: 0.5525, y: 0.3495 }, connector: { type: 'quadratic', start: { x: 0.2972, y: 0.3244 }, control: { x: 0.3111, y: 0.3508 }, end: { x: 0.3284, y: 0.3491 } } }"/>
 
 ```kotlin
 generateExcel("invoices.xlsx", invoices) {
@@ -33,9 +33,9 @@ generateExcel("invoices.xlsx", invoices) {
 
 # One overload per cell type
 
-<DrawnAnnotation text="-> String" />
-<DrawnAnnotation text="-> Number" />
-<DrawnAnnotation text="-> LocalDate" label="Every type a cell can hold" />
+<DrawnAnnotation text="String" occurrence="2" />
+<DrawnAnnotation text="Number" />
+<DrawnAnnotation text="LocalDate" label="Every type a cell can hold" />
 
 ```kotlin
 import java.time.LocalDate
@@ -51,10 +51,11 @@ class SheetBuilder<T> {
 
 # The overload is chosen before the lambda
 
-<InlineCompilerError :line="2" text="column" message="Overload resolution ambiguity between candidates:\nfun column(name: String, value: (Invoice) -> String): Unit\nfun column(name: String, value: (Invoice) -> Number): Unit\nfun column(name: String, value: (Invoice) -> LocalDate): Unit" style="--inline-compiler-error-message-size: 1.1rem">
+<InlineCompilerError :line="3" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.43rem">
 
 ```kotlin
 generateExcel("invoices.xlsx", invoices) {
+  
   column("Customer") { it.customer }
 }
 ```
@@ -96,12 +97,15 @@ class SheetBuilder<T> {
 
 # The JVM erases the lambda type
 
-<InlineCompilerError :line="3" text="fun column(name: String, value: (T) -> String)" message="Platform declaration clash: The following declarations have the same JVM signature\n(column(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V)" style="--inline-compiler-error-message-size: 1.1rem">
+<InlineCompilerError :line="3" text="fun column(\nname: String,\n value: (T) -> String\n)" message="Platform declaration clash: The following declarations have the same JVM signature\n(column(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V)" style="--inline-compiler-error-message-size: 1.1rem">
 
 ```kotlin
 class SheetBuilder<T> {
   @OverloadResolutionByLambdaReturnType
-  fun column(name: String, value: (T) -> String)
+  fun column(
+    name: String,
+    value: (T) -> String
+  )
   @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> Number)
   @OverloadResolutionByLambdaReturnType
