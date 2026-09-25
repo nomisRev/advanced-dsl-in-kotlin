@@ -1,8 +1,7 @@
 # Advanced DSL in Kotlin
 
 Slidev version of the *Advanced DSL in Kotlin* talk, built on
-[`slidev-theme-kotlin`](https://www.npmjs.com/package/slidev-theme-kotlin) and
-migrated from the Keynote deck in `../keynote-utils`.
+[`slidev-theme-kotlin`](https://www.npmjs.com/package/slidev-theme-kotlin).
 
 ## Run locally
 
