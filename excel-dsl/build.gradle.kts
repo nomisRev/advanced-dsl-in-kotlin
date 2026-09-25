@@ -11,6 +11,7 @@ dependencies {
   implementation("org.apache.poi:poi-ooxml:5.5.1")
 
   testImplementation(kotlin("test"))
+  testImplementation(kotlin("compiler-embeddable"))
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -27,4 +28,5 @@ kotlin {
 
 tasks.test {
   useJUnitPlatform()
+  systemProperty("dsl.compile.classpath", sourceSets.main.get().runtimeClasspath.asPath)
 }

@@ -30,4 +30,8 @@ val extrasSnippetsCheck by tasks.registering(Exec::class) {
   commandLine("npx", "slidev-kotlin-snippets", "extras.md", "--check")
 }
 
-tasks.check { dependsOn(snippetsCheck, extrasSnippetsCheck) }
+val recapSnippetsCheck by tasks.registering(Exec::class) {
+  commandLine("npx", "slidev-kotlin-snippets", "lesson-0.md", "--check")
+}
+
+tasks.check { dependsOn(snippetsCheck, extrasSnippetsCheck, recapSnippetsCheck) }

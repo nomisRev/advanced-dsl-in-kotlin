@@ -1,292 +1,629 @@
 package excel.dsl
 
-/*
- * The scopes of the formula DSL. Which operands exist depends on the context:
- * a row formula can reference the columns of its row, a totals formula only
- * whole columns through `sum(total)` and friends. Plain `Expr` arithmetic,
- * `round`, comparisons and `then`/`otherwise` work in both.
- */
-
-/** What every formula scope has: arithmetic over [Expr], [round], comparisons and `then`/`otherwise`. */
+/** Operations shared by row formulas and totals. */
 @ExcelDsl
 sealed interface Arithmetic {
-  /** `ROUND(value, digits)`. */
-  fun round(value: Expr, digits: Int = 0): Expr = Expr.Round(value, digits)
+  fun round(value: Expr<Number>, digits: Int = 0): Expr<Double> = Expr.Round(value, digits)
+  fun literal(value: Number): Expr<Double> = constant(value)
+  fun literal(value: String): Expr<String> = Expr.Text(value)
+  fun literal(value: Boolean): Expr<Boolean> = Expr.Bool(value)
 }
 
-/**
- * The scope of `formula { }`: one row. The operators below take it as a
- * context, so users write helpers the same way:
- *
- * ```kotlin
- * context(_: Formulas)
- * fun Column<Number>.withVat(): Expr = this * 1.21
- * ```
- */
+/** Row formulas may reference columns from their sheet. */
 @ExcelDsl
 sealed interface Formulas : Arithmetic {
-  /** `SUM(B2, C2)` over [columns], at least one. */
-  fun sum(columns: List<Column<Number>>): Expr = aggregate(AggregateFunction.Sum, columns)
-
-  /** `AVERAGE(B2, C2)`, skipping empty cells. */
-  fun average(columns: List<Column<Number>>): Expr = aggregate(AggregateFunction.Average, columns)
-
-  fun min(columns: List<Column<Number>>): Expr = aggregate(AggregateFunction.Min, columns)
-
-  fun max(columns: List<Column<Number>>): Expr = aggregate(AggregateFunction.Max, columns)
-
-  /** `ROUND(B2, digits)`. */
-  fun round(column: Column<Number>, digits: Int = 0): Expr = Expr.Round(Expr.Ref(column), digits)
-
-  private fun aggregate(function: AggregateFunction, columns: List<Column<Number>>): Expr =
-    Expr.Aggregate(function, columns.map(Expr::Ref))
+  fun sum(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Sum, columns)
+  fun average(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Average, columns)
+  fun min(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Min, columns)
+  fun max(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Max, columns)
+  fun round(column: Column<Number>, digits: Int = 0): Expr<Double> = Expr.Round(Expr.Ref(column), digits)
+  private fun aggregate(function: AggregateFunction, columns: List<Column<Number>>): Expr<Double> =
+    Expr.Aggregate(function, columns.map { Expr.Ref(it) })
 }
 
-/** The scope of a totals cell: every data row of a column at once, `SUM(E2:E4)`. */
+/** Totals may aggregate whole columns, but cannot reference a single row. */
 @ExcelDsl
 sealed interface Totals : Arithmetic {
-  fun sum(column: Column<Number>): Expr = aggregate(AggregateFunction.Sum, column)
-
-  /** Skips empty cells; `#DIV/0!` in Excel, `NaN` in `evaluate`, when all are empty. */
-  fun average(column: Column<Number>): Expr = aggregate(AggregateFunction.Average, column)
-
-  /** `0` when every cell is empty, like Excel. */
-  fun min(column: Column<Number>): Expr = aggregate(AggregateFunction.Min, column)
-
-  /** `0` when every cell is empty, like Excel. */
-  fun max(column: Column<Number>): Expr = aggregate(AggregateFunction.Max, column)
-
-  /** `COUNTA`: the non-empty cells of a column of any type. */
-  fun count(column: Column<*>): Expr = aggregate(AggregateFunction.Count, column)
-
-  private fun aggregate(function: AggregateFunction, column: Column<*>): Expr =
+  fun sum(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Sum, column)
+  fun average(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Average, column)
+  fun min(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Min, column)
+  fun max(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Max, column)
+  /** COUNTA counts non-empty cells, including text, booleans and errors. */
+  fun count(column: Column<*>): Expr<Double> = aggregate(AggregateFunction.Count, column)
+  private fun aggregate(function: AggregateFunction, column: Column<*>): Expr<Double> =
     Expr.Aggregate(function, listOf(Expr.Range(column)))
 }
-
 internal object FormulaScope : Formulas
-
 internal object TotalsScope : Totals
 
-/** Half of `condition then a otherwise b`, finished by [otherwise]. */
-class Branch internal constructor(internal val condition: Expr, internal val then: Expr)
+/** Explicit reference for an alias formula: `formula { amount.ref() }`. */
+context(_: Formulas)
+@JvmName("numberRef")
+fun Column<Number>.ref(): Expr<Number> = Expr.Ref(this)
+context(_: Formulas)
+@JvmName("textRef")
+fun Column<String>.ref(): Expr<String> = Expr.Ref(this)
+context(_: Formulas)
+@JvmName("booleanRef")
+fun Column<Boolean>.ref(): Expr<Boolean> = Expr.Ref(this)
+
+/** Explicit conversion: Boolean cells are otherwise excluded from numeric operations. */
+context(_: Arithmetic)
+fun Expr<Boolean>.asNumber(): Expr<Double> = Expr.If(this, Expr.Constant(1.0), Expr.Constant(0.0))
+context(_: Formulas)
+fun Column<Boolean>.asNumber(): Expr<Double> = ref().asNumber()
+context(_: Arithmetic)
+fun Expr<Number>.asBoolean(): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Constant(0.0))
+context(_: Formulas)
+fun Column<Number>.asBoolean(): Expr<Boolean> = ref().asBoolean()
+
+/** Invariant V prevents otherwise from widening incompatible branches to Any. */
+class Branch<V> internal constructor(internal val condition: Expr<Boolean>, internal val then: Expr<V>) {
+  context(_: Arithmetic)
+  infix fun otherwise(value: Expr<V>): Expr<V> = Expr.If(condition, then, value)
+  context(_: Formulas)
+  infix fun otherwise(value: Column<V>): Expr<V> = Expr.If(condition, then, Expr.Ref(value))
+}
 
 context(_: Arithmetic)
-operator fun Expr.plus(other: Expr): Expr = Expr.Plus(this, other)
+operator fun Expr<Number>.plus(other: Expr<Number>): Expr<Double> = Expr.Plus(this, other)
 
 context(_: Arithmetic)
-operator fun Expr.plus(other: Number): Expr = Expr.Plus(this, constant(other))
+operator fun Expr<Number>.plus(other: Number): Expr<Double> = Expr.Plus(this, constant(other))
 
 context(_: Formulas)
-operator fun Expr.plus(other: Column<Number>): Expr = Expr.Plus(this, Expr.Ref(other))
+operator fun Expr<Number>.plus(other: Column<Number>): Expr<Double> = Expr.Plus(this, Expr.Ref(other))
 
 context(_: Formulas)
-operator fun Column<Number>.plus(other: Expr): Expr = Expr.Plus(Expr.Ref(this), other)
+operator fun Column<Number>.plus(other: Expr<Number>): Expr<Double> = Expr.Plus(Expr.Ref(this), other)
 
 context(_: Formulas)
-operator fun Column<Number>.plus(other: Column<Number>): Expr =
-  Expr.Plus(Expr.Ref(this), Expr.Ref(other))
+operator fun Column<Number>.plus(other: Column<Number>): Expr<Double> = Expr.Plus(Expr.Ref(this), Expr.Ref(other))
 
 context(_: Formulas)
-operator fun Column<Number>.plus(other: Number): Expr = Expr.Plus(Expr.Ref(this), constant(other))
+operator fun Column<Number>.plus(other: Number): Expr<Double> = Expr.Plus(Expr.Ref(this), constant(other))
 
 context(_: Arithmetic)
-operator fun Expr.minus(other: Expr): Expr = Expr.Minus(this, other)
+operator fun Number.plus(other: Expr<Number>): Expr<Double> = Expr.Plus(constant(this), other)
+
+context(_: Formulas)
+operator fun Number.plus(other: Column<Number>): Expr<Double> = Expr.Plus(constant(this), Expr.Ref(other))
 
 context(_: Arithmetic)
-operator fun Expr.minus(other: Number): Expr = Expr.Minus(this, constant(other))
-
-context(_: Formulas)
-operator fun Expr.minus(other: Column<Number>): Expr = Expr.Minus(this, Expr.Ref(other))
-
-context(_: Formulas)
-operator fun Column<Number>.minus(other: Expr): Expr = Expr.Minus(Expr.Ref(this), other)
-
-context(_: Formulas)
-operator fun Column<Number>.minus(other: Column<Number>): Expr =
-  Expr.Minus(Expr.Ref(this), Expr.Ref(other))
-
-context(_: Formulas)
-operator fun Column<Number>.minus(other: Number): Expr = Expr.Minus(Expr.Ref(this), constant(other))
+operator fun Expr<Number>.minus(other: Expr<Number>): Expr<Double> = Expr.Minus(this, other)
 
 context(_: Arithmetic)
-operator fun Expr.times(other: Expr): Expr = Expr.Times(this, other)
+operator fun Expr<Number>.minus(other: Number): Expr<Double> = Expr.Minus(this, constant(other))
+
+context(_: Formulas)
+operator fun Expr<Number>.minus(other: Column<Number>): Expr<Double> = Expr.Minus(this, Expr.Ref(other))
+
+context(_: Formulas)
+operator fun Column<Number>.minus(other: Expr<Number>): Expr<Double> = Expr.Minus(Expr.Ref(this), other)
+
+context(_: Formulas)
+operator fun Column<Number>.minus(other: Column<Number>): Expr<Double> = Expr.Minus(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Formulas)
+operator fun Column<Number>.minus(other: Number): Expr<Double> = Expr.Minus(Expr.Ref(this), constant(other))
 
 context(_: Arithmetic)
-operator fun Expr.times(other: Number): Expr = Expr.Times(this, constant(other))
+operator fun Number.minus(other: Expr<Number>): Expr<Double> = Expr.Minus(constant(this), other)
 
 context(_: Formulas)
-operator fun Expr.times(other: Column<Number>): Expr = Expr.Times(this, Expr.Ref(other))
-
-context(_: Formulas)
-operator fun Column<Number>.times(other: Expr): Expr = Expr.Times(Expr.Ref(this), other)
-
-context(_: Formulas)
-operator fun Column<Number>.times(other: Column<Number>): Expr =
-  Expr.Times(Expr.Ref(this), Expr.Ref(other))
-
-context(_: Formulas)
-operator fun Column<Number>.times(other: Number): Expr = Expr.Times(Expr.Ref(this), constant(other))
+operator fun Number.minus(other: Column<Number>): Expr<Double> = Expr.Minus(constant(this), Expr.Ref(other))
 
 context(_: Arithmetic)
-operator fun Expr.div(other: Expr): Expr = Expr.Div(this, other)
+operator fun Expr<Number>.times(other: Expr<Number>): Expr<Double> = Expr.Times(this, other)
 
 context(_: Arithmetic)
-operator fun Expr.div(other: Number): Expr = Expr.Div(this, constant(other))
+operator fun Expr<Number>.times(other: Number): Expr<Double> = Expr.Times(this, constant(other))
 
 context(_: Formulas)
-operator fun Expr.div(other: Column<Number>): Expr = Expr.Div(this, Expr.Ref(other))
+operator fun Expr<Number>.times(other: Column<Number>): Expr<Double> = Expr.Times(this, Expr.Ref(other))
 
 context(_: Formulas)
-operator fun Column<Number>.div(other: Expr): Expr = Expr.Div(Expr.Ref(this), other)
+operator fun Column<Number>.times(other: Expr<Number>): Expr<Double> = Expr.Times(Expr.Ref(this), other)
 
 context(_: Formulas)
-operator fun Column<Number>.div(other: Column<Number>): Expr =
-  Expr.Div(Expr.Ref(this), Expr.Ref(other))
+operator fun Column<Number>.times(other: Column<Number>): Expr<Double> = Expr.Times(Expr.Ref(this), Expr.Ref(other))
 
 context(_: Formulas)
-operator fun Column<Number>.div(other: Number): Expr = Expr.Div(Expr.Ref(this), constant(other))
-
-/** Comparisons are infix functions, since `>` has to return `Boolean`: `total gt 1000`. */
-context(_: Arithmetic)
-infix fun Expr.gt(other: Expr): Expr = Expr.Compare(this, Comparison.Greater, other)
+operator fun Column<Number>.times(other: Number): Expr<Double> = Expr.Times(Expr.Ref(this), constant(other))
 
 context(_: Arithmetic)
-infix fun Expr.gt(other: Number): Expr = Expr.Compare(this, Comparison.Greater, constant(other))
+operator fun Number.times(other: Expr<Number>): Expr<Double> = Expr.Times(constant(this), other)
 
 context(_: Formulas)
-infix fun Expr.gt(other: Column<Number>): Expr = Expr.Compare(this, Comparison.Greater, Expr.Ref(other))
-
-context(_: Formulas)
-infix fun Column<Number>.gt(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.Greater, other)
-
-context(_: Formulas)
-infix fun Column<Number>.gt(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.Greater, Expr.Ref(other))
-
-context(_: Formulas)
-infix fun Column<Number>.gt(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.Greater, constant(other))
+operator fun Number.times(other: Column<Number>): Expr<Double> = Expr.Times(constant(this), Expr.Ref(other))
 
 context(_: Arithmetic)
-infix fun Expr.ge(other: Expr): Expr = Expr.Compare(this, Comparison.GreaterOrEqual, other)
+operator fun Expr<Number>.div(other: Expr<Number>): Expr<Double> = Expr.Div(this, other)
 
 context(_: Arithmetic)
-infix fun Expr.ge(other: Number): Expr = Expr.Compare(this, Comparison.GreaterOrEqual, constant(other))
+operator fun Expr<Number>.div(other: Number): Expr<Double> = Expr.Div(this, constant(other))
 
 context(_: Formulas)
-infix fun Expr.ge(other: Column<Number>): Expr = Expr.Compare(this, Comparison.GreaterOrEqual, Expr.Ref(other))
+operator fun Expr<Number>.div(other: Column<Number>): Expr<Double> = Expr.Div(this, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.ge(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, other)
+operator fun Column<Number>.div(other: Expr<Number>): Expr<Double> = Expr.Div(Expr.Ref(this), other)
 
 context(_: Formulas)
-infix fun Column<Number>.ge(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, Expr.Ref(other))
+operator fun Column<Number>.div(other: Column<Number>): Expr<Double> = Expr.Div(Expr.Ref(this), Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.ge(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, constant(other))
+operator fun Column<Number>.div(other: Number): Expr<Double> = Expr.Div(Expr.Ref(this), constant(other))
 
 context(_: Arithmetic)
-infix fun Expr.lt(other: Expr): Expr = Expr.Compare(this, Comparison.Less, other)
+operator fun Number.div(other: Expr<Number>): Expr<Double> = Expr.Div(constant(this), other)
+
+context(_: Formulas)
+operator fun Number.div(other: Column<Number>): Expr<Double> = Expr.Div(constant(this), Expr.Ref(other))
 
 context(_: Arithmetic)
-infix fun Expr.lt(other: Number): Expr = Expr.Compare(this, Comparison.Less, constant(other))
+operator fun Expr<Number>.unaryMinus(): Expr<Double> = Expr.Minus(Expr.Constant(0.0), this)
 
 context(_: Formulas)
-infix fun Expr.lt(other: Column<Number>): Expr = Expr.Compare(this, Comparison.Less, Expr.Ref(other))
-
-context(_: Formulas)
-infix fun Column<Number>.lt(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.Less, other)
-
-context(_: Formulas)
-infix fun Column<Number>.lt(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.Less, Expr.Ref(other))
-
-context(_: Formulas)
-infix fun Column<Number>.lt(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.Less, constant(other))
+operator fun Column<Number>.unaryMinus(): Expr<Double> = Expr.Minus(Expr.Constant(0.0), Expr.Ref(this))
 
 context(_: Arithmetic)
-infix fun Expr.le(other: Expr): Expr = Expr.Compare(this, Comparison.LessOrEqual, other)
+@JvmName("gtNumber0")
+infix fun Expr<Number>.gt(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, other)
 
 context(_: Arithmetic)
-infix fun Expr.le(other: Number): Expr = Expr.Compare(this, Comparison.LessOrEqual, constant(other))
+@JvmName("gtNumber1")
+infix fun Expr<Number>.gt(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, constant(other))
 
 context(_: Formulas)
-infix fun Expr.le(other: Column<Number>): Expr = Expr.Compare(this, Comparison.LessOrEqual, Expr.Ref(other))
+@JvmName("gtNumber2")
+infix fun Expr<Number>.gt(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.le(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, other)
+@JvmName("gtNumber3")
+infix fun Column<Number>.gt(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, other)
 
 context(_: Formulas)
-infix fun Column<Number>.le(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, Expr.Ref(other))
+@JvmName("gtNumber4")
+infix fun Column<Number>.gt(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.le(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, constant(other))
+@JvmName("gtNumber5")
+infix fun Column<Number>.gt(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, constant(other))
 
 context(_: Arithmetic)
-infix fun Expr.eq(other: Expr): Expr = Expr.Compare(this, Comparison.Equal, other)
+@JvmName("geNumber0")
+infix fun Expr<Number>.ge(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, other)
 
 context(_: Arithmetic)
-infix fun Expr.eq(other: Number): Expr = Expr.Compare(this, Comparison.Equal, constant(other))
+@JvmName("geNumber1")
+infix fun Expr<Number>.ge(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, constant(other))
 
 context(_: Formulas)
-infix fun Expr.eq(other: Column<Number>): Expr = Expr.Compare(this, Comparison.Equal, Expr.Ref(other))
+@JvmName("geNumber2")
+infix fun Expr<Number>.ge(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.eq(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.Equal, other)
+@JvmName("geNumber3")
+infix fun Column<Number>.ge(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, other)
 
 context(_: Formulas)
-infix fun Column<Number>.eq(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Ref(other))
+@JvmName("geNumber4")
+infix fun Column<Number>.ge(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.eq(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.Equal, constant(other))
+@JvmName("geNumber5")
+infix fun Column<Number>.ge(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, constant(other))
 
 context(_: Arithmetic)
-infix fun Expr.ne(other: Expr): Expr = Expr.Compare(this, Comparison.NotEqual, other)
+@JvmName("ltNumber0")
+infix fun Expr<Number>.lt(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Less, other)
 
 context(_: Arithmetic)
-infix fun Expr.ne(other: Number): Expr = Expr.Compare(this, Comparison.NotEqual, constant(other))
+@JvmName("ltNumber1")
+infix fun Expr<Number>.lt(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.Less, constant(other))
 
 context(_: Formulas)
-infix fun Expr.ne(other: Column<Number>): Expr = Expr.Compare(this, Comparison.NotEqual, Expr.Ref(other))
+@JvmName("ltNumber2")
+infix fun Expr<Number>.lt(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Less, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.ne(other: Expr): Expr = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, other)
+@JvmName("ltNumber3")
+infix fun Column<Number>.lt(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, other)
 
 context(_: Formulas)
-infix fun Column<Number>.ne(other: Column<Number>): Expr =
-  Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Ref(other))
+@JvmName("ltNumber4")
+infix fun Column<Number>.lt(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, Expr.Ref(other))
 
 context(_: Formulas)
-infix fun Column<Number>.ne(other: Number): Expr = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, constant(other))
-
-/** `total gt 1000 then total * 0.9 otherwise total`: `IF(E2>1000, E2*0.9, E2)`. */
-context(_: Arithmetic)
-infix fun Expr.then(value: Expr): Branch = Branch(this, value)
-
-context(_: Arithmetic)
-infix fun Expr.then(value: Number): Branch = Branch(this, constant(value))
-
-context(_: Formulas)
-infix fun Expr.then(value: Column<Number>): Branch = Branch(this, Expr.Ref(value))
-
-context(_: Formulas)
-infix fun Column<Number>.then(value: Expr): Branch = Branch(Expr.Ref(this), value)
-
-context(_: Formulas)
-infix fun Column<Number>.then(value: Number): Branch = Branch(Expr.Ref(this), constant(value))
-
-context(_: Formulas)
-infix fun Column<Number>.then(value: Column<Number>): Branch = Branch(Expr.Ref(this), Expr.Ref(value))
+@JvmName("ltNumber5")
+infix fun Column<Number>.lt(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, constant(other))
 
 context(_: Arithmetic)
-infix fun Branch.otherwise(value: Expr): Expr = Expr.If(condition, then, value)
+@JvmName("leNumber0")
+infix fun Expr<Number>.le(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, other)
 
 context(_: Arithmetic)
-infix fun Branch.otherwise(value: Number): Expr = Expr.If(condition, then, constant(value))
+@JvmName("leNumber1")
+infix fun Expr<Number>.le(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, constant(other))
 
 context(_: Formulas)
-infix fun Branch.otherwise(value: Column<Number>): Expr = Expr.If(condition, then, Expr.Ref(value))
+@JvmName("leNumber2")
+infix fun Expr<Number>.le(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, Expr.Ref(other))
 
-private fun constant(value: Number): Expr = Expr.Constant(value.toDouble())
+context(_: Formulas)
+@JvmName("leNumber3")
+infix fun Column<Number>.le(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, other)
+
+context(_: Formulas)
+@JvmName("leNumber4")
+infix fun Column<Number>.le(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("leNumber5")
+infix fun Column<Number>.le(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, constant(other))
+
+context(_: Arithmetic)
+@JvmName("eqNumber0")
+infix fun Expr<Number>.eq(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, other)
+
+context(_: Arithmetic)
+@JvmName("eqNumber1")
+infix fun Expr<Number>.eq(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, constant(other))
+
+context(_: Formulas)
+@JvmName("eqNumber2")
+infix fun Expr<Number>.eq(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqNumber3")
+infix fun Column<Number>.eq(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, other)
+
+context(_: Formulas)
+@JvmName("eqNumber4")
+infix fun Column<Number>.eq(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqNumber5")
+infix fun Column<Number>.eq(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, constant(other))
+
+context(_: Arithmetic)
+@JvmName("neNumber0")
+infix fun Expr<Number>.ne(other: Expr<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, other)
+
+context(_: Arithmetic)
+@JvmName("neNumber1")
+infix fun Expr<Number>.ne(other: Number): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, constant(other))
+
+context(_: Formulas)
+@JvmName("neNumber2")
+infix fun Expr<Number>.ne(other: Column<Number>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neNumber3")
+infix fun Column<Number>.ne(other: Expr<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, other)
+
+context(_: Formulas)
+@JvmName("neNumber4")
+infix fun Column<Number>.ne(other: Column<Number>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neNumber5")
+infix fun Column<Number>.ne(other: Number): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, constant(other))
+
+context(_: Arithmetic)
+@JvmName("gtString0")
+infix fun Expr<String>.gt(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, other)
+
+context(_: Arithmetic)
+@JvmName("gtString1")
+infix fun Expr<String>.gt(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("gtString2")
+infix fun Expr<String>.gt(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Greater, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("gtString3")
+infix fun Column<String>.gt(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, other)
+
+context(_: Formulas)
+@JvmName("gtString4")
+infix fun Column<String>.gt(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("gtString5")
+infix fun Column<String>.gt(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Greater, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("geString0")
+infix fun Expr<String>.ge(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, other)
+
+context(_: Arithmetic)
+@JvmName("geString1")
+infix fun Expr<String>.ge(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("geString2")
+infix fun Expr<String>.ge(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.GreaterOrEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("geString3")
+infix fun Column<String>.ge(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, other)
+
+context(_: Formulas)
+@JvmName("geString4")
+infix fun Column<String>.ge(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("geString5")
+infix fun Column<String>.ge(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.GreaterOrEqual, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("ltString0")
+infix fun Expr<String>.lt(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Less, other)
+
+context(_: Arithmetic)
+@JvmName("ltString1")
+infix fun Expr<String>.lt(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.Less, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("ltString2")
+infix fun Expr<String>.lt(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Less, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("ltString3")
+infix fun Column<String>.lt(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, other)
+
+context(_: Formulas)
+@JvmName("ltString4")
+infix fun Column<String>.lt(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("ltString5")
+infix fun Column<String>.lt(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Less, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("leString0")
+infix fun Expr<String>.le(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, other)
+
+context(_: Arithmetic)
+@JvmName("leString1")
+infix fun Expr<String>.le(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("leString2")
+infix fun Expr<String>.le(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.LessOrEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("leString3")
+infix fun Column<String>.le(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, other)
+
+context(_: Formulas)
+@JvmName("leString4")
+infix fun Column<String>.le(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("leString5")
+infix fun Column<String>.le(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.LessOrEqual, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("eqString0")
+infix fun Expr<String>.eq(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, other)
+
+context(_: Arithmetic)
+@JvmName("eqString1")
+infix fun Expr<String>.eq(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("eqString2")
+infix fun Expr<String>.eq(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqString3")
+infix fun Column<String>.eq(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, other)
+
+context(_: Formulas)
+@JvmName("eqString4")
+infix fun Column<String>.eq(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqString5")
+infix fun Column<String>.eq(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("neString0")
+infix fun Expr<String>.ne(other: Expr<String>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, other)
+
+context(_: Arithmetic)
+@JvmName("neString1")
+infix fun Expr<String>.ne(other: String): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("neString2")
+infix fun Expr<String>.ne(other: Column<String>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neString3")
+infix fun Column<String>.ne(other: Expr<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, other)
+
+context(_: Formulas)
+@JvmName("neString4")
+infix fun Column<String>.ne(other: Column<String>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neString5")
+infix fun Column<String>.ne(other: String): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Text(other))
+
+context(_: Arithmetic)
+@JvmName("eqBoolean0")
+infix fun Expr<Boolean>.eq(other: Expr<Boolean>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, other)
+
+context(_: Arithmetic)
+@JvmName("eqBoolean1")
+infix fun Expr<Boolean>.eq(other: Boolean): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, Expr.Bool(other))
+
+context(_: Formulas)
+@JvmName("eqBoolean2")
+infix fun Expr<Boolean>.eq(other: Column<Boolean>): Expr<Boolean> = Expr.Compare(this, Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqBoolean3")
+infix fun Column<Boolean>.eq(other: Expr<Boolean>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, other)
+
+context(_: Formulas)
+@JvmName("eqBoolean4")
+infix fun Column<Boolean>.eq(other: Column<Boolean>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("eqBoolean5")
+infix fun Column<Boolean>.eq(other: Boolean): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.Equal, Expr.Bool(other))
+
+context(_: Arithmetic)
+@JvmName("neBoolean0")
+infix fun Expr<Boolean>.ne(other: Expr<Boolean>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, other)
+
+context(_: Arithmetic)
+@JvmName("neBoolean1")
+infix fun Expr<Boolean>.ne(other: Boolean): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Bool(other))
+
+context(_: Formulas)
+@JvmName("neBoolean2")
+infix fun Expr<Boolean>.ne(other: Column<Boolean>): Expr<Boolean> = Expr.Compare(this, Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neBoolean3")
+infix fun Column<Boolean>.ne(other: Expr<Boolean>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, other)
+
+context(_: Formulas)
+@JvmName("neBoolean4")
+infix fun Column<Boolean>.ne(other: Column<Boolean>): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("neBoolean5")
+infix fun Column<Boolean>.ne(other: Boolean): Expr<Boolean> = Expr.Compare(Expr.Ref(this), Comparison.NotEqual, Expr.Bool(other))
+
+context(_: Arithmetic)
+infix fun Expr<Boolean>.and(other: Expr<Boolean>): Expr<Boolean> = Expr.And(this, other)
+
+context(_: Formulas)
+infix fun Expr<Boolean>.and(other: Column<Boolean>): Expr<Boolean> = Expr.And(this, Expr.Ref(other))
+
+context(_: Formulas)
+infix fun Column<Boolean>.and(other: Expr<Boolean>): Expr<Boolean> = Expr.And(Expr.Ref(this), other)
+
+context(_: Formulas)
+infix fun Column<Boolean>.and(other: Column<Boolean>): Expr<Boolean> = Expr.And(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Arithmetic)
+infix fun Expr<Boolean>.and(other: Boolean): Expr<Boolean> = Expr.And(this, Expr.Bool(other))
+
+context(_: Formulas)
+infix fun Column<Boolean>.and(other: Boolean): Expr<Boolean> = Expr.And(Expr.Ref(this), Expr.Bool(other))
+
+context(_: Arithmetic)
+infix fun Expr<Boolean>.or(other: Expr<Boolean>): Expr<Boolean> = Expr.Or(this, other)
+
+context(_: Formulas)
+infix fun Expr<Boolean>.or(other: Column<Boolean>): Expr<Boolean> = Expr.Or(this, Expr.Ref(other))
+
+context(_: Formulas)
+infix fun Column<Boolean>.or(other: Expr<Boolean>): Expr<Boolean> = Expr.Or(Expr.Ref(this), other)
+
+context(_: Formulas)
+infix fun Column<Boolean>.or(other: Column<Boolean>): Expr<Boolean> = Expr.Or(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Arithmetic)
+infix fun Expr<Boolean>.or(other: Boolean): Expr<Boolean> = Expr.Or(this, Expr.Bool(other))
+
+context(_: Formulas)
+infix fun Column<Boolean>.or(other: Boolean): Expr<Boolean> = Expr.Or(Expr.Ref(this), Expr.Bool(other))
+
+context(_: Arithmetic)
+operator fun Expr<Boolean>.not(): Expr<Boolean> = Expr.Not(this)
+
+context(_: Formulas)
+operator fun Column<Boolean>.not(): Expr<Boolean> = Expr.Not(Expr.Ref(this))
+
+context(_: Arithmetic)
+@JvmName("thenNumberExpr0")
+infix fun Expr<Boolean>.then(other: Expr<Number>): Branch<Number> = Branch(this, other)
+
+context(_: Formulas)
+@JvmName("thenNumberExpr1")
+infix fun Expr<Boolean>.then(other: Column<Number>): Branch<Number> = Branch(this, Expr.Ref(other))
+
+context(_: Arithmetic)
+@JvmName("thenNumberExpr2")
+infix fun Expr<Boolean>.then(other: Number): Branch<Number> = Branch(this, constant(other))
+
+context(_: Formulas)
+@JvmName("thenNumberColumn0")
+infix fun Column<Boolean>.then(other: Expr<Number>): Branch<Number> = Branch(Expr.Ref(this), other)
+
+context(_: Formulas)
+@JvmName("thenNumberColumn1")
+infix fun Column<Boolean>.then(other: Column<Number>): Branch<Number> = Branch(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("thenNumberColumn2")
+infix fun Column<Boolean>.then(other: Number): Branch<Number> = Branch(Expr.Ref(this), constant(other))
+
+context(_: Arithmetic)
+infix fun Branch<Number>.otherwise(value: Number): Expr<Number> = Expr.If(condition, then, constant(value))
+
+context(_: Arithmetic)
+@JvmName("thenStringExpr0")
+infix fun Expr<Boolean>.then(other: Expr<String>): Branch<String> = Branch(this, other)
+
+context(_: Formulas)
+@JvmName("thenStringExpr1")
+infix fun Expr<Boolean>.then(other: Column<String>): Branch<String> = Branch(this, Expr.Ref(other))
+
+context(_: Arithmetic)
+@JvmName("thenStringExpr2")
+infix fun Expr<Boolean>.then(other: String): Branch<String> = Branch(this, Expr.Text(other))
+
+context(_: Formulas)
+@JvmName("thenStringColumn0")
+infix fun Column<Boolean>.then(other: Expr<String>): Branch<String> = Branch(Expr.Ref(this), other)
+
+context(_: Formulas)
+@JvmName("thenStringColumn1")
+infix fun Column<Boolean>.then(other: Column<String>): Branch<String> = Branch(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("thenStringColumn2")
+infix fun Column<Boolean>.then(other: String): Branch<String> = Branch(Expr.Ref(this), Expr.Text(other))
+
+context(_: Arithmetic)
+infix fun Branch<String>.otherwise(value: String): Expr<String> = Expr.If(condition, then, Expr.Text(value))
+
+context(_: Arithmetic)
+@JvmName("thenBooleanExpr0")
+infix fun Expr<Boolean>.then(other: Expr<Boolean>): Branch<Boolean> = Branch(this, other)
+
+context(_: Formulas)
+@JvmName("thenBooleanExpr1")
+infix fun Expr<Boolean>.then(other: Column<Boolean>): Branch<Boolean> = Branch(this, Expr.Ref(other))
+
+context(_: Arithmetic)
+@JvmName("thenBooleanExpr2")
+infix fun Expr<Boolean>.then(other: Boolean): Branch<Boolean> = Branch(this, Expr.Bool(other))
+
+context(_: Formulas)
+@JvmName("thenBooleanColumn0")
+infix fun Column<Boolean>.then(other: Expr<Boolean>): Branch<Boolean> = Branch(Expr.Ref(this), other)
+
+context(_: Formulas)
+@JvmName("thenBooleanColumn1")
+infix fun Column<Boolean>.then(other: Column<Boolean>): Branch<Boolean> = Branch(Expr.Ref(this), Expr.Ref(other))
+
+context(_: Formulas)
+@JvmName("thenBooleanColumn2")
+infix fun Column<Boolean>.then(other: Boolean): Branch<Boolean> = Branch(Expr.Ref(this), Expr.Bool(other))
+
+context(_: Arithmetic)
+infix fun Branch<Boolean>.otherwise(value: Boolean): Expr<Boolean> = Expr.If(condition, then, Expr.Bool(value))
+
+internal fun constant(value: Number): Expr<Double> = Expr.Constant(value.checkedExcelDouble())

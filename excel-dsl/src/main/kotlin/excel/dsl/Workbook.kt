@@ -42,6 +42,10 @@ class WorkbookBuilder @PublishedApi internal constructor() {
     sheets += Workbook.Entry(name, sheet, rows)
   }
 
+  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Iterable<T>) {
+    sheet(name, sheet, rows.asSequence())
+  }
+
   @PublishedApi
   internal fun build(): Workbook = Workbook(sheets.toList())
 }

@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.DataFormatter
+import org.apache.poi.ss.usermodel.FormulaError
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 
 data class Invoice(
@@ -76,12 +77,13 @@ fun <T> assertExcelAgrees(sheet: Sheet<T>, rows: List<T>) {
       CellType.NUMERIC -> value.numberValue
       CellType.BOOLEAN -> value.booleanValue
       CellType.STRING -> value.stringValue
-      CellType.ERROR -> ERROR
+      CellType.ERROR -> FormulaError.forInt(value.errorValue).string
       else -> null
     }
   }
   fun expected(value: Any?): Any? = when (value) {
-    is Double -> if (value.isFinite()) value else ERROR
+    is ExcelError -> value.text
+    is Double -> if (value.isFinite()) value else ExcelError.Number.text
     is Number -> value.toDouble()
     else -> value
   }
@@ -103,5 +105,3 @@ fun <T> assertExcelAgrees(sheet: Sheet<T>, rows: List<T>) {
     )
   }
 }
-
-private const val ERROR = "#ERROR"

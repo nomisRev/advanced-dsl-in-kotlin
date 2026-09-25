@@ -141,7 +141,7 @@ class TotalsTest {
       }
     }
     assertExcelAgrees(sheet, invoices)
-    assertEquals(Double.NaN, sheet.totals(invoices.asSequence())["Empty"])
+    assertEquals(ExcelError.DivisionByZero, sheet.totals(invoices.asSequence())["Empty"])
   }
 
   @Test

@@ -63,29 +63,29 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   @OverloadResolutionByLambdaReturnType
   @JvmName("textColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> String?): ColumnDelegate<String> =
-    delegate { data(it, format, width, value) }
+    delegate { data(it, format, width, ValueKind.Text, value) }
 
   /** Written as a double, which Excel stores with 15 significant digits. */
   @OverloadResolutionByLambdaReturnType
   @JvmName("numberColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): ColumnDelegate<Number> =
-    delegate { data(it, format, width, value) }
+    delegate { data(it, format, width, ValueKind.Number, value) }
 
   /** Written as the constant's [Enum.name]. */
   @OverloadResolutionByLambdaReturnType
   @JvmName("enumColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Enum<*>?): ColumnDelegate<String> =
-    delegate { data(it, format, width) { row -> value(row)?.name } }
+    delegate { data(it, format, width, ValueKind.Text) { row -> value(row)?.name } }
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("booleanColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Boolean?): ColumnDelegate<Boolean> =
-    delegate { data(it, format, width, value) }
+    delegate { data(it, format, width, ValueKind.Boolean, value) }
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> LocalDate?): ColumnDelegate<LocalDate> =
-    delegate { data(it, format, width, value) }
+    delegate { data(it, format, width, ValueKind.Date, value) }
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateTimeColumn")
@@ -93,44 +93,57 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     format: CellFormat? = null,
     width: Int? = null,
     value: (T) -> LocalDateTime?,
-  ): ColumnDelegate<LocalDateTime> = delegate { data(it, format, width, value) }
+  ): ColumnDelegate<LocalDateTime> = delegate { data(it, format, width, ValueKind.DateTime, value) }
 
   /** Shown as a date and time in [ExcelConfig.zone]. */
   @OverloadResolutionByLambdaReturnType
   @JvmName("instantColumn")
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Instant?): ColumnDelegate<Instant> =
-    delegate { data(it, format, width, value) }
+    delegate { data(it, format, width, ValueKind.Instant, value) }
 
   /**
    * A column Excel computes. [block] runs once, here, and builds an [Expr]
    * that is rendered for every row. It may only reference columns of this sheet.
    */
-  fun formula(
+  fun <V> formula(
     format: CellFormat? = null,
     width: Int? = null,
-    block: Formulas.() -> Expr,
-  ): ColumnDelegate<Number> {
+    block: Formulas.() -> Expr<V>,
+  ): ColumnDelegate<V> {
     val expr = FormulaScope.block()
     checkOwned(expr)
     require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
-    return delegate { header -> add(header, format, width) { ColumnSpec.Formula(it, expr) } }
+    return delegate { header -> add(header, format, width, expr.kind) { ColumnSpec.Formula(it, expr) } }
+  }
+
+  /** Adds a formula with an explicit header and returns its typed column. */
+  fun <V> formula(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    block: Formulas.() -> Expr<V>,
+  ): Column<V> {
+    val expr = FormulaScope.block()
+    checkOwned(expr)
+    require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
+    return add(name, format, width, expr.kind) { ColumnSpec.Formula(it, expr) }
   }
 
   /** `"Issued on" { it.issuedOn }`: the string is the header, used as is. */
   @OverloadResolutionByLambdaReturnType
   @JvmName("textInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> String?): Column<String> =
-    data(this, format, width, value)
+    data(this, format, width, ValueKind.Text, value)
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("numberInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): Column<Number> =
-    data(this, format, width, value)
+    data(this, format, width, ValueKind.Number, value)
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("enumInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> Enum<*>?): Column<String> =
-    data(this, format, width) { row -> value(row)?.name }
+    data(this, format, width, ValueKind.Text) { row -> value(row)?.name }
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("booleanInvoke")
@@ -138,7 +151,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     format: CellFormat? = null,
     width: Int? = null,
     value: (T) -> Boolean?,
-  ): Column<Boolean> = data(this, format, width, value)
+  ): Column<Boolean> = data(this, format, width, ValueKind.Boolean, value)
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateInvoke")
@@ -146,7 +159,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     format: CellFormat? = null,
     width: Int? = null,
     value: (T) -> LocalDate?,
-  ): Column<LocalDate> = data(this, format, width, value)
+  ): Column<LocalDate> = data(this, format, width, ValueKind.Date, value)
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateTimeInvoke")
@@ -154,7 +167,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     format: CellFormat? = null,
     width: Int? = null,
     value: (T) -> LocalDateTime?,
-  ): Column<LocalDateTime> = data(this, format, width, value)
+  ): Column<LocalDateTime> = data(this, format, width, ValueKind.DateTime, value)
 
   @OverloadResolutionByLambdaReturnType
   @JvmName("instantInvoke")
@@ -162,7 +175,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     format: CellFormat? = null,
     width: Int? = null,
     value: (T) -> Instant?,
-  ): Column<Instant> = data(this, format, width, value)
+  ): Column<Instant> = data(this, format, width, ValueKind.Instant, value)
 
   /**
    * A bold row under the data, one cell per column that [block] fills.
@@ -188,7 +201,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     }
 
     /** Any formula over whole columns: `gross.total { round(sum(gross), 2) }`. */
-    fun Column<*>.total(block: Totals.() -> Expr) {
+    fun Column<*>.total(block: Totals.() -> Expr<*>) {
       val expr = TotalsScope.block()
       this@SheetBuilder.checkOwned(expr)
       require(expr.references().none { it is Expr.Ref }) { "A total cannot reference a single row: $expr" }
@@ -222,24 +235,30 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   internal fun build(): Sheet<T> =
     Sheet(columns.toList(), totals.mapKeys { it.key.index }, freezePanes, autoFilter, config.zone)
 
-  private fun <V> data(header: String, format: CellFormat?, width: Int?, value: (T) -> V?): Column<V> =
-    add(header, format, width) { ColumnSpec.Data(it, value) }
+  private fun <V> data(header: String, format: CellFormat?, width: Int?, kind: ValueKind, value: (T) -> V?): Column<V> =
+    add(header, format, width, kind) { ColumnSpec.Data(it, value) }
 
   private fun <V> add(
     header: String,
     format: CellFormat?,
     width: Int?,
+    kind: ValueKind,
     spec: (ColumnSpec.Layout) -> ColumnSpec<T>,
   ): Column<V> {
     require(columns.none { it.column.name == header }) { "Duplicate header: $header" }
     require(columns.size < MAX_COLUMNS) { "Excel sheets hold at most $MAX_COLUMNS columns" }
     require(width == null || width in 1..MAX_WIDTH) { "Width of $header must be in 1..$MAX_WIDTH, got $width" }
-    val column = Column<V>(header, columns.size, this)
+    val column = Column<V>(header, columns.size, this, kind)
     columns += spec(ColumnSpec.Layout(column, format, width))
     return column
   }
 
-  private fun checkOwned(expr: Expr) {
+  private fun checkOwned(expr: Expr<*>) {
+    fun validateRanges(node: Expr<*>, aggregateOperand: Boolean = false) {
+      require(node !is Expr.Range || aggregateOperand) { "A range must be an aggregate operand: $node" }
+      node.children().forEach { validateRanges(it, node is Expr.Aggregate) }
+    }
+    validateRanges(expr)
     val foreign = expr.references().mapNotNull { it.referencedColumn }.filter { it.owner !== this }
     require(foreign.isEmpty()) { "Formula references columns of another sheet: $foreign" }
   }
@@ -262,12 +281,12 @@ internal sealed interface ColumnSpec<in T> {
   class Layout(val column: Column<*>, val format: CellFormat?, val width: Int?)
 
   class Data<T>(override val layout: Layout, val value: (T) -> Any?) : ColumnSpec<T>
-  class Formula(override val layout: Layout, val expr: Expr) : ColumnSpec<Any?>
+  class Formula(override val layout: Layout, val expr: Expr<*>) : ColumnSpec<Any?>
 }
 
 internal sealed interface TotalSpec {
   class Label(val text: String) : TotalSpec
-  class Formula(val expr: Expr) : TotalSpec
+  class Formula(val expr: Expr<*>) : TotalSpec
 }
 
 /** Excel 2007 and later: 16,384 columns, 1,048,576 rows, 255 characters wide. */

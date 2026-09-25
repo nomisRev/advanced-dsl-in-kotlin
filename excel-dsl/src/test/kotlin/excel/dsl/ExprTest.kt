@@ -23,9 +23,9 @@ class ExprTest {
   private val rb = Expr.Ref(b)
   private val rc = Expr.Ref(c)
   private fun k(value: Double) = Expr.Constant(value)
-  private fun sum(vararg terms: Expr) = Expr.Aggregate(Sum, terms.toList())
+  private fun sum(vararg terms: Expr<*>) = Expr.Aggregate(Sum, terms.toList())
 
-  private fun excel(expr: Expr, row: Int = 2) = expr.toExcel(row)
+  private fun excel(expr: Expr<*>, row: Int = 2) = expr.toExcel(row)
 
   @Test
   fun `a reference renders the cell in the given row`() {
@@ -61,8 +61,8 @@ class ExprTest {
 
   @Test
   fun `constants must be finite`() {
-    assertFailsWith<IllegalArgumentException> { k(Double.NaN) }
     assertFailsWith<IllegalArgumentException> { k(Double.POSITIVE_INFINITY) }
+    assertFailsWith<IllegalArgumentException> { k(Double.NaN) }
   }
 
   @Test
@@ -108,98 +108,103 @@ class ExprTest {
     assertEquals("A2-(B2-C2)", excel(Expr.Minus(ra, Expr.Minus(rb, rc))))
     assertEquals("A2/(B2*C2)", excel(Expr.Div(ra, Expr.Times(rb, rc))))
     assertEquals("A2+B2>C2", excel(Expr.Compare(Expr.Plus(ra, rb), Greater, rc)))
-    assertEquals("(A2>B2)*C2", excel(Expr.Times(Expr.Compare(ra, Greater, rb), rc)))
+    assertEquals("IF(A2>B2, 1, 0)*C2", excel(Expr.Times(Expr.If(Expr.Compare(ra, Greater, rb), k(1.0), k(0.0)), rc)))
     assertEquals("SUM(A2+B2)*2", excel(Expr.Times(sum(Expr.Plus(ra, rb)), k(2.0))))
   }
 
   @Test
   fun `evaluate computes from the referenced values`() {
     val row = mapOf(a to 3, b to 4.5, c to 2L)
-    assertEquals(3.0, ra.evaluate(row))
-    assertEquals(7.5, Expr.Plus(ra, rb).evaluate(row))
-    assertEquals(-1.5, Expr.Minus(ra, rb).evaluate(row))
-    assertEquals(13.5, Expr.Times(ra, rb).evaluate(row))
-    assertEquals(1.5, Expr.Div(ra, rc).evaluate(row))
-    assertEquals(1.21, k(1.21).evaluate(row))
+    assertEquals(3.0, ra.computed(row))
+    assertEquals(7.5, Expr.Plus(ra, rb).computed(row))
+    assertEquals(-1.5, Expr.Minus(ra, rb).computed(row))
+    assertEquals(13.5, Expr.Times(ra, rb).computed(row))
+    assertEquals(1.5, Expr.Div(ra, rc).computed(row))
+    assertEquals(1.21, k(1.21).computed(row))
   }
 
   @Test
-  fun `comparisons evaluate to one or zero`() {
+  fun `comparisons evaluate to booleans`() {
     val row = mapOf(a to 3, b to 4)
-    fun compare(comparison: Comparison, left: Expr, right: Expr) = Expr.Compare(left, comparison, right).evaluate(row)
-    assertEquals(listOf(0.0, 1.0, 0.0), listOf(compare(Greater, ra, rb), compare(Greater, rb, ra), compare(Greater, ra, ra)))
-    assertEquals(listOf(0.0, 1.0), listOf(compare(GreaterOrEqual, ra, rb), compare(GreaterOrEqual, ra, ra)))
-    assertEquals(listOf(1.0, 0.0), listOf(compare(Less, ra, rb), compare(Less, ra, ra)))
-    assertEquals(listOf(1.0, 0.0), listOf(compare(LessOrEqual, ra, ra), compare(LessOrEqual, rb, ra)))
-    assertEquals(listOf(1.0, 0.0), listOf(compare(Equal, ra, ra), compare(Equal, ra, rb)))
-    assertEquals(listOf(0.0, 1.0), listOf(compare(NotEqual, ra, ra), compare(NotEqual, ra, rb)))
+    fun compare(comparison: Comparison, left: Expr<*>, right: Expr<*>) = Expr.Compare(left, comparison, right).computed(row)
+    assertEquals(listOf(false, true, false), listOf(compare(Greater, ra, rb), compare(Greater, rb, ra), compare(Greater, ra, ra)))
+    assertEquals(listOf(false, true), listOf(compare(GreaterOrEqual, ra, rb), compare(GreaterOrEqual, ra, ra)))
+    assertEquals(listOf(true, false), listOf(compare(Less, ra, rb), compare(Less, ra, ra)))
+    assertEquals(listOf(true, false), listOf(compare(LessOrEqual, ra, ra), compare(LessOrEqual, rb, ra)))
+    assertEquals(listOf(true, false), listOf(compare(Equal, ra, ra), compare(Equal, ra, rb)))
+    assertEquals(listOf(false, true), listOf(compare(NotEqual, ra, ra), compare(NotEqual, ra, rb)))
   }
 
   @Test
   fun `aggregates evaluate like Excel`() {
     val row = mapOf(a to 3, b to 5, c to null)
-    assertEquals(8.0, sum(ra, rb, rc).evaluate(row))
-    assertEquals(4.0, Expr.Aggregate(Average, listOf(ra, rb, rc)).evaluate(row))
-    assertEquals(3.0, Expr.Aggregate(Min, listOf(ra, rb, rc)).evaluate(row))
-    assertEquals(5.0, Expr.Aggregate(Max, listOf(ra, rb, rc)).evaluate(row))
-    assertEquals(2.0, Expr.Aggregate(Count, listOf(ra, rb, rc)).evaluate(row))
+    assertEquals(8.0, sum(ra, rb, rc).computed(row))
+    assertEquals(4.0, Expr.Aggregate(Average, listOf(ra, rb, rc)).computed(row))
+    assertEquals(3.0, Expr.Aggregate(Min, listOf(ra, rb, rc)).computed(row))
+    assertEquals(5.0, Expr.Aggregate(Max, listOf(ra, rb, rc)).computed(row))
+    assertEquals(2.0, Expr.Aggregate(Count, listOf(ra, rb, rc)).computed(row))
   }
 
   @Test
   fun `aggregates of nothing`() {
     val row = mapOf(a to null)
-    assertEquals(0.0, sum(ra).evaluate(row))
-    assertEquals(Double.NaN, Expr.Aggregate(Average, listOf(ra)).evaluate(row))
-    assertEquals(0.0, Expr.Aggregate(Min, listOf(ra)).evaluate(row))
-    assertEquals(0.0, Expr.Aggregate(Max, listOf(ra)).evaluate(row))
-    assertEquals(0.0, Expr.Aggregate(Count, listOf(ra)).evaluate(row))
+    assertEquals(0.0, sum(ra).computed(row))
+    assertEquals(ExcelError.DivisionByZero, Expr.Aggregate(Average, listOf(ra)).computed(row))
+    assertEquals(0.0, Expr.Aggregate(Min, listOf(ra)).computed(row))
+    assertEquals(0.0, Expr.Aggregate(Max, listOf(ra)).computed(row))
+    assertEquals(0.0, Expr.Aggregate(Count, listOf(ra)).computed(row))
   }
 
   @Test
   fun `round goes half away from zero`() {
-    fun round(value: Double, digits: Int) = Expr.Round(k(value), digits).evaluate(emptyMap())
+    fun round(value: Double, digits: Int) = Expr.Round(k(value), digits).computed(emptyMap())
     assertEquals(3.0, round(2.5, 0))
     assertEquals(-3.0, round(-2.5, 0))
     assertEquals(2.68, round(2.675, 2))
     assertEquals(1200.0, round(1249.0, -2))
-    assertEquals(Double.POSITIVE_INFINITY, Expr.Round(Expr.Div(k(1.0), k(0.0)), 2).evaluate(emptyMap()))
+    assertEquals(ExcelError.DivisionByZero, Expr.Round(Expr.Div(k(1.0), k(0.0)), 2).computed(emptyMap()))
   }
 
   @Test
   fun `if picks a branch on any non-zero condition`() {
-    fun pick(condition: Double) = Expr.If(k(condition), k(1.0), k(2.0)).evaluate(emptyMap())
+    fun pick(condition: Double) = Expr.If(Expr.Compare(k(condition), NotEqual, k(0.0)), k(1.0), k(2.0)).computed(emptyMap())
     assertEquals(listOf(1.0, 2.0, 1.0), listOf(pick(1.0), pick(0.0), pick(-0.5)))
   }
 
   @Test
   fun `if only evaluates the branch it picks`() {
     val missing = Column<Number>("missing", 9, Unit)
-    assertEquals(1.0, Expr.If(k(1.0), k(1.0), Expr.Ref(missing)).evaluate(emptyMap()))
+    assertEquals(1.0, Expr.If(Expr.Bool(true), k(1.0), Expr.Ref(missing)).computed(emptyMap()))
   }
 
   @Test
   fun `a null value counts as zero in arithmetic, like an empty cell`() {
-    assertEquals(4.0, Expr.Plus(ra, rb).evaluate(mapOf(a to null, b to 4)))
+    assertEquals(4.0, Expr.Plus(ra, rb).computed(mapOf(a to null, b to 4)))
   }
 
   @Test
   fun `a missing column fails`() {
-    assertFailsWith<NoSuchElementException> { rb.evaluate(mapOf(a to 1)) }
+    assertFailsWith<NoSuchElementException> { rb.computed(mapOf(a to 1)) }
   }
 
   @Test
   fun `a range cannot be evaluated for one row`() {
-    assertFailsWith<IllegalArgumentException> { sum(Expr.Range(a)).evaluate(mapOf(a to 1)) }
+    assertFailsWith<IllegalArgumentException> { sum(Expr.Range(a)).computed(mapOf(a to 1)) }
   }
 
   @Test
-  fun `division by zero follows IEEE 754`() {
-    assertEquals(Double.POSITIVE_INFINITY, Expr.Div(ra, rb).evaluate(mapOf(a to 1, b to 0)))
-    assertEquals(Double.NaN, Expr.Div(ra, rb).evaluate(mapOf(a to 0, b to 0)))
+  fun `division by zero produces a spreadsheet error`() {
+    assertEquals(ExcelError.DivisionByZero, Expr.Div(ra, rb).computed(mapOf(a to 1, b to 0)))
+    assertEquals(ExcelError.DivisionByZero, Expr.Div(ra, rb).computed(mapOf(a to 0, b to 0)))
   }
 
   @Test
   fun `trees compare structurally`() {
     assertEquals(Expr.Times(ra, k(2.0)), Expr.Times(Expr.Ref(a), Expr.Constant(2.0)))
   }
+}
+
+private fun Expr<*>.computed(row: Map<out Column<*>, Any?>): Any? = when (val result = evaluate(row)) {
+  is CellResult.Value -> result.value
+  is CellResult.Error -> result.error
 }

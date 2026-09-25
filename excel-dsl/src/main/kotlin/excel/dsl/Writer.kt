@@ -102,7 +102,7 @@ internal class SheetWriter<T>(
         is LocalDate -> cell.setCellValue(value)
         is LocalDateTime -> cell.setCellValue(value)
         is Instant -> cell.setCellValue(LocalDateTime.ofInstant(value, sheet.zone))
-        is Expr -> cell.cellFormula = value.toExcel(excelRow)
+        is Expr<*> -> cell.cellFormula = value.toExcel(excelRow)
         else -> fail("unsupported cell value $value")
       }
     }
@@ -147,13 +147,13 @@ private fun ColumnSpec<*>.width(): Int =
     .coerceAtMost(MAX_WIDTH)
 
 /** `null` when Excel cannot hold the number without losing digits. */
-private fun Number.toExcelDouble(): Double? = when (this) {
+internal fun Number.toExcelDouble(): Double? = when (this) {
   is Double -> takeIf { it.isFinite() }
   is Float -> toDouble().takeIf { it.isFinite() }
   is BigDecimal -> takeIf { it.fits() }?.toDouble()?.takeIf { it.isFinite() && (it != 0.0 || signum() == 0) }
   is BigInteger -> takeIf { it.toBigDecimal().fits() }?.toDouble()?.takeIf { it.isFinite() }
   is Long -> takeIf { it.toBigDecimal().fits() }?.toDouble()
-  else -> toDouble()
+  else -> toDouble().takeIf { it.isFinite() }
 }
 
 private fun BigDecimal.fits(): Boolean = signum() == 0 || stripTrailingZeros().precision() <= MAX_DIGITS
@@ -163,3 +163,7 @@ private fun Number.unsupported(): String =
   else if (!toDouble().isFinite() || (this is BigDecimal && signum() != 0 && toDouble() == 0.0))
     "$this is outside the supported numeric range; write it as text"
   else "$this has more than $MAX_DIGITS significant digits, which Excel cannot store; write it as text"
+
+/** The same precision and range checks apply to cells and formula constants. */
+internal fun Number.checkedExcelDouble(): Double =
+  toExcelDouble() ?: throw IllegalArgumentException(unsupported())

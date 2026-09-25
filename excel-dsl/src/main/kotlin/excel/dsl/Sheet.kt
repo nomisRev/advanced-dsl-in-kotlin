@@ -27,10 +27,10 @@ class Sheet<in T> internal constructor(
    * One row as values, keyed by header in column order, without Excel.
    * Data columns hold what their lambda returned; formulas the `Double`
    * computed from the columns before them, or a `Boolean` when the result
-   * is a comparison, including one selected by `IF`, as Excel shows it.
+   * is a comparison, text for text formulas, or an [ExcelError].
    */
   fun evaluate(row: T): Map<String, Any?> =
-    evaluateRow(row).mapKeys { it.key.name }
+    evaluateTyped(row).toMap()
 
   /**
    * The totals row for [rows], keyed by header in column order, only for
@@ -38,16 +38,35 @@ class Sheet<in T> internal constructor(
    */
   fun totals(rows: Sequence<T>): Map<String, Any?> {
     if (totals.isEmpty()) return emptyMap()
-    val values = columns.associate { it.column to mutableListOf<Any?>() }
-    for (row in rows) evaluateRow(row).forEach { (column, value) -> values.getValue(column) += value }
-    if (values.values.first().isEmpty()) return emptyMap()
+    val referenced = totals.values.filterIsInstance<TotalSpec.Formula>()
+      .flatMap { it.expr.references() }.mapNotNull { it.referencedColumn }.toSet()
+    val summaries = referenced.associateWith { RangeSummary() }
+    // Include dependencies of formula columns, but never evaluate unrelated columns.
+    val needed = referenced.toMutableSet()
+    for (spec in columns.asReversed()) {
+      if (spec.column in needed && spec is ColumnSpec.Formula) {
+        needed += spec.expr.references().mapNotNull { it.referencedColumn }
+      }
+    }
+    var anyRows = false
+    for (row in rows) {
+      anyRows = true
+      val values = evaluateRow(row, needed)
+      summaries.forEach { (column, summary) -> summary.add(values.getValue(column)) }
+    }
+    if (!anyRows) return emptyMap()
     return totals.toSortedMap().entries.associate { (index, spec) ->
       headers[index] to when (spec) {
         is TotalSpec.Label -> spec.text
-        is TotalSpec.Formula -> spec.expr.evaluate(cell = { error("A total has no row") }, range = values::getValue)
+        is TotalSpec.Formula -> spec.expr.evaluateRaw(cell = { error("A total has no row") }, range = summaries::getValue)
       }
     }
   }
+
+  fun totals(rows: Iterable<T>): Map<String, Any?> = totals(rows.asSequence())
+
+  /** Values, blanks and errors, indexed by typed column handles. */
+  fun evaluateTyped(row: T): EvaluatedRow = EvaluatedRow(evaluateRow(row))
 
   /**
    * Streams [rows] into [output] as a workbook with one sheet called [name].
@@ -57,21 +76,22 @@ class Sheet<in T> internal constructor(
     workbook { sheet(name, this@Sheet, rows) }.write(output)
   }
 
-  /** Like the `Sequence` overload, collecting [rows] on `Dispatchers.IO`, since Apache POI blocks. */
-  suspend fun write(output: OutputStream, rows: Flow<T>, name: String = DEFAULT_NAME) {
-    withContext(Dispatchers.IO) {
-      streamWorkbook(output) {
-        sheet(name, this@Sheet) { writer -> rows.collect(writer::write) }
-      }
-    }
+  fun write(output: OutputStream, rows: Iterable<T>, name: String = DEFAULT_NAME) {
+    write(output, rows.asSequence(), name)
   }
 
-  private fun evaluateRow(row: T): Map<Column<*>, Any?> {
+  /** Like the `Sequence` overload, collecting [rows] on `Dispatchers.IO`, since Apache POI blocks. */
+  suspend fun write(output: OutputStream, rows: Flow<T>, name: String = DEFAULT_NAME) {
+    flowWorkbook { sheet(name, this@Sheet, rows) }.write(output)
+  }
+
+  private fun evaluateRow(row: T, needed: Set<Column<*>>? = null): Map<Column<*>, Any?> {
     val values = LinkedHashMap<Column<*>, Any?>()
     for (spec in columns) {
+      if (needed != null && spec.column !in needed) continue
       values[spec.column] = when (spec) {
         is ColumnSpec.Data -> spec.value(row)
-        is ColumnSpec.Formula -> spec.expr.evaluate(cell = values::get, range = { error("A row has no range") })
+        is ColumnSpec.Formula -> spec.expr.evaluateRaw(cell = values::getValue, range = { error("A row has no range") })
       }
     }
     return values
@@ -83,13 +103,19 @@ class Sheet<in T> internal constructor(
 }
 
 /** Writes a file, and names the sheet after it: `q1.xlsx` gets `q1`. */
-fun <T> Sheet<T>.write(path: Path, rows: Sequence<T>) {
-  path.outputStream().use { write(it, rows, path.nameWithoutExtension) }
+fun <T> Sheet<T>.write(path: Path, rows: Sequence<T>, name: String = path.nameWithoutExtension) {
+  checkSheetName(name)
+  path.outputStream().use { write(it, rows, name) }
 }
 
 /** Writes a file from a [Flow], naming the sheet after it. */
-suspend fun <T> Sheet<T>.write(path: Path, rows: Flow<T>) {
+suspend fun <T> Sheet<T>.write(path: Path, rows: Flow<T>, name: String = path.nameWithoutExtension) {
+  checkSheetName(name)
   withContext(Dispatchers.IO) {
-    path.outputStream().use { write(it, rows, path.nameWithoutExtension) }
+    path.outputStream().use { write(it, rows, name) }
   }
+}
+
+fun <T> Sheet<T>.write(path: Path, rows: Iterable<T>, name: String = path.nameWithoutExtension) {
+  write(path, rows.asSequence(), name)
 }

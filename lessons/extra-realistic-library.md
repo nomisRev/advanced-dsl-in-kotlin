@@ -414,7 +414,7 @@ magic-move
 
 > Extra “DSL tricks”, after “`infix` reads like the formula”
 
-<InlineCompilerError :line="6" text="amount gt 1000 then amount * 0.9" message="Return type mismatch: expected 'Expr', actual 'Branch'.">
+<InlineCompilerError :line="6" text="amount gt 1000 then amount * 0.9" message="Return type mismatch: expected 'Expr<Number>', actual 'Branch<Number>'.">
 
 ```kotlin
 import excel.dsl.*
@@ -423,7 +423,7 @@ generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula { hours * rate }
-  val due by formula {
+  val due by formula<Number> {
     amount gt 1000 then amount * 0.9
   }
 }
@@ -564,14 +564,14 @@ generateExcel("invoices.xlsx", invoices) {
 sealed interface Arithmetic
 sealed interface Formulas : Arithmetic
 sealed interface Totals : Arithmetic {
-  fun sum(column: Column<Number>): Expr
+  fun sum(column: Column<Number>): Expr<Double>
 }
 
 context(_: Arithmetic)
-operator fun Expr.times(other: Number): Expr
+operator fun Expr<Number>.times(other: Number): Expr<Double>
 
 context(_: Formulas)
-operator fun Column<Number>.times(other: Number): Expr
+operator fun Column<Number>.times(other: Number): Expr<Double>
 ```
 
 <!--
@@ -589,7 +589,7 @@ magic-move
 
 > Part 5, after “Context parameter or receiver?”
 
-<InlineCompilerError :line="5" text="hours" occurrence="2" message="Argument type mismatch: actual type is 'Column<Number>', but 'Expr' was expected.">
+<InlineCompilerError :line="5" text="hours" occurrence="2" message="Argument type mismatch: actual type is 'Column<Number>', but 'Expr<Number>' was expected.">
 
 ```kotlin
 import excel.dsl.*
@@ -620,12 +620,12 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="Range" :line="3" color="var(--fundamentals-blue)" />
 
 ```kotlin no-compile
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Range(val column: Column<*>) : Expr
+sealed interface Expr<out V> {
+  data class Ref<V> internal constructor(val column: Column<V>) : Expr<V>
+  data class Range(val column: Column<*>) : Expr<Nothing>
 }
 
-fun Expr.toExcel(row: Int, data: IntRange? = null): String = when (this) {
+fun Expr<*>.toExcel(row: Int, data: IntRange? = null): String = when (this) {
   is Ref -> column.reference(row)
   is Range -> {
     requireNotNull(data) { "A range only exists in a totals row: $column" }
@@ -635,7 +635,8 @@ fun Expr.toExcel(row: Int, data: IntRange? = null): String = when (this) {
 ```
 
 <!--
-The full tree also has Plus, Minus, Times, Div, Compare, Aggregate, Round and If.
+This sketch shows reference addressing. The full renderer also normalizes blank
+text and Boolean references, and renders arithmetic, conditions and aggregates.
 Rows are streamed, so the totals row is rendered after the last row, when `data` is
 finally known.
 -->

@@ -54,11 +54,11 @@ class EvaluateTest {
   }
 
   @Test
-  fun `a comparison is a Boolean, and a number once used in arithmetic`() {
+  fun `a comparison is a Boolean, and converts explicitly for arithmetic`() {
     val sheet = sheet<Invoice> {
       val hours by column { it.hours }
       val long by formula { hours gt 10 }
-      val bonus by formula { long * 100 }
+      val bonus by formula { long.asNumber() * 100 }
       val flag by formula { hours gt 10 then 1 otherwise 0 }
     }
     assertEquals(mapOf("Hours" to 12, "Long" to true, "Bonus" to 100.0, "Flag" to 1.0), sheet.evaluate(invoices[0]))

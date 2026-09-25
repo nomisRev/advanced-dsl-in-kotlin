@@ -2,6 +2,7 @@ package presentation.support.leaky
 
 import presentation.support.NamedColumns
 import presentation.support.WorkbookSheets
+import presentation.support.writeWorkbook
 
 /*
  * The workbook DSL of Part 1 before `@DslMarker`:
@@ -20,3 +21,10 @@ class SheetBuilder<T> : NamedColumns<T>()
 
 fun workbook(path: String, block: WorkbookBuilder.() -> Unit) =
   WorkbookBuilder().apply(block).write(path)
+
+/** The single-sheet builder from the optional Part 0 recap. */
+fun <T> generateExcel(
+  path: String,
+  rows: Sequence<T>,
+  block: SheetBuilder<T>.() -> Unit,
+) = writeWorkbook(path, rows, SheetBuilder<T>().apply(block))

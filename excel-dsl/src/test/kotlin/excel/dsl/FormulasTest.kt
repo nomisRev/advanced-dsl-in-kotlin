@@ -12,11 +12,11 @@ import kotlin.test.assertFailsWith
 
 /** A helper written the way users write their own: a context, not a member. */
 context(_: Formulas)
-fun Column<Number>.withVat(): Expr = this * 1.21
+fun Column<Number>.withVat(): Expr<Double> = this * 1.21
 
 /** One that works in a row and in a total, since it only needs arithmetic. */
 context(_: Arithmetic)
-fun Expr.withVat(): Expr = this * 1.21
+fun Expr<Number>.withVat(): Expr<Double> = this * 1.21
 
 class FormulasTest {
   private val a = Column<Number>("a", 0, Unit)
@@ -25,8 +25,8 @@ class FormulasTest {
   private val rb = Expr.Ref(b)
   private val two = Expr.Constant(2.0)
 
-  private fun formula(block: Formulas.() -> Expr): Expr = FormulaScope.block()
-  private fun total(block: Totals.() -> Expr): Expr = TotalsScope.block()
+  private fun <V> formula(block: Formulas.() -> Expr<V>): Expr<V> = FormulaScope.block()
+  private fun <V> total(block: Totals.() -> Expr<V>): Expr<V> = TotalsScope.block()
 
   @Test
   fun `every operand pairing builds the same node`() {

@@ -75,8 +75,8 @@ class WriteTest {
       val min by formula { min([hours, rate]) }
       val max by formula { max([hours, rate]) }
       val large by formula { total gt 1000 }
-      val comparisons by formula { (hours ge 12) + (hours lt 10) + (hours le 8) + (rate eq 80) + (rate ne 80) }
-      val weighted by formula { (large + 1) * hours }
+      val comparisons by formula { (hours ge 12).asNumber() + (hours lt 10).asNumber() + (hours le 8).asNumber() + (rate eq 80).asNumber() + (rate ne 80).asNumber() }
+      val weighted by formula { (large.asNumber() + 1) * hours }
       val negated by formula { hours * -1 }
       val rounded by formula { round(total / 7, 2) }
       val hundreds by formula { round(total, -2) }

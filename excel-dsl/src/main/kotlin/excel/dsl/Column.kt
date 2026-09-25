@@ -6,7 +6,7 @@ package excel.dsl
  *
  *
  */
-class Column<out V> internal constructor(val name: String, val index: Int, internal val owner: Any) {
+class Column<out V> internal constructor(val name: String, val index: Int, internal val owner: Any, internal val kind: ValueKind = ValueKind.Number) {
   override fun toString(): String = "Column($name, $letter)"
 }
 
@@ -25,3 +25,5 @@ fun Column<*>.reference(row: Int): String {
   require(row >= 1) { "Excel rows start at 1, got $row" }
   return "$letter$row"
 }
+
+internal enum class ValueKind { Number, Text, Boolean, Date, DateTime, Instant }
