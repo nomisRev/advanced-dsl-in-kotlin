@@ -15,7 +15,7 @@ class BooleanFormulaTest {
       val nested by formula { flag then alias otherwise other }
       val numeric by formula { flag.asNumber() }
       val arithmetic by formula { numeric + 1 }
-      totals { numeric.sum(); flag.count() }
+      totals { numeric.sum(); flag.countNonBlank() }
     }
     assertEquals(true, schema.evaluate(2)["Flag"])
     assertEquals(false, schema.evaluate(null)["Flag"])
@@ -40,7 +40,8 @@ class BooleanFormulaTest {
   fun `conditional totals preserve Boolean results`() {
     val schema = sheet<Int> {
       val value by column { it }
-      totals { value.total { sum(value) gt 0 then (sum(value) gt 1) otherwise (sum(value) lt 0) } }
+      val flag by formula { value gt 0 }
+      totals { flag.total { sum(value) gt 0 then (sum(value) gt 1) otherwise (sum(value) lt 0) } }
     }
     for (value in listOf(-1, 0, 1, 2)) assertExcelAgrees(schema, listOf(value))
   }

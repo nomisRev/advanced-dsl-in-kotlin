@@ -2,6 +2,8 @@
 
 package excel.dsl
 
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -71,6 +73,18 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): ColumnDelegate<Number> =
     delegate { data(it, format, width, ValueKind.Number, value) }
 
+  /** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("decimalColumn")
+  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigDecimal?): ColumnDelegate<BigDecimal> =
+    delegate { data(it, format, width, ValueKind.Number, value) }
+
+  /** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("bigIntegerColumn")
+  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigInteger?): ColumnDelegate<BigInteger> =
+    delegate { data(it, format, width, ValueKind.Number, value) }
+
   /** Written as the constant's [Enum.name]. */
   @OverloadResolutionByLambdaReturnType
   @JvmName("enumColumn")
@@ -117,6 +131,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   }
 
   /** Adds a formula with an explicit header and returns its typed column. */
+  @IgnorableReturnValue
   fun <V> formula(
     name: String,
     format: CellFormat? = null,
@@ -129,22 +144,117 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     return add(name, format, width, expr.kind) { ColumnSpec.Formula(it, expr) }
   }
 
+  /** Adds a data column immediately, with an explicit header. */
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("textNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> String?,
+  ): Column<String> = data(name, format, width, ValueKind.Text, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("numberNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> Number?,
+  ): Column<Number> = data(name, format, width, ValueKind.Number, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("decimalNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> BigDecimal?,
+  ): Column<BigDecimal> = data(name, format, width, ValueKind.Number, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("bigIntegerNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> BigInteger?,
+  ): Column<BigInteger> = data(name, format, width, ValueKind.Number, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("enumNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> Enum<*>?,
+  ): Column<String> = data(name, format, width, ValueKind.Text) { row -> value(row)?.name }
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("booleanNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> Boolean?,
+  ): Column<Boolean> = data(name, format, width, ValueKind.Boolean, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("dateNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> LocalDate?,
+  ): Column<LocalDate> = data(name, format, width, ValueKind.Date, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("dateTimeNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> LocalDateTime?,
+  ): Column<LocalDateTime> = data(name, format, width, ValueKind.DateTime, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("instantNamedColumn")
+  fun column(
+    name: String,
+    format: CellFormat? = null,
+    width: Int? = null,
+    value: (T) -> Instant?,
+  ): Column<Instant> = data(name, format, width, ValueKind.Instant, value)
+
   /** `"Issued on" { it.issuedOn }`: the string is the header, used as is. */
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("textInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> String?): Column<String> =
     data(this, format, width, ValueKind.Text, value)
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("numberInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): Column<Number> =
     data(this, format, width, ValueKind.Number, value)
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("enumInvoke")
   operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> Enum<*>?): Column<String> =
     data(this, format, width, ValueKind.Text) { row -> value(row)?.name }
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("booleanInvoke")
   operator fun String.invoke(
@@ -153,6 +263,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     value: (T) -> Boolean?,
   ): Column<Boolean> = data(this, format, width, ValueKind.Boolean, value)
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateInvoke")
   operator fun String.invoke(
@@ -161,6 +272,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     value: (T) -> LocalDate?,
   ): Column<LocalDate> = data(this, format, width, ValueKind.Date, value)
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("dateTimeInvoke")
   operator fun String.invoke(
@@ -169,6 +281,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     value: (T) -> LocalDateTime?,
   ): Column<LocalDateTime> = data(this, format, width, ValueKind.DateTime, value)
 
+  @IgnorableReturnValue
   @OverloadResolutionByLambdaReturnType
   @JvmName("instantInvoke")
   operator fun String.invoke(
@@ -176,6 +289,18 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     width: Int? = null,
     value: (T) -> Instant?,
   ): Column<Instant> = data(this, format, width, ValueKind.Instant, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("decimalInvoke")
+  operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> BigDecimal?): Column<BigDecimal> =
+    data(this, format, width, ValueKind.Number, value)
+
+  @IgnorableReturnValue
+  @OverloadResolutionByLambdaReturnType
+  @JvmName("bigIntegerInvoke")
+  operator fun String.invoke(format: CellFormat? = null, width: Int? = null, value: (T) -> BigInteger?): Column<BigInteger> =
+    data(this, format, width, ValueKind.Number, value)
 
   /**
    * A bold row under the data, one cell per column that [block] fills.
@@ -200,12 +325,21 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
       put(this, TotalSpec.Label(text))
     }
 
-    /** Any formula over whole columns: `gross.total { round(sum(gross), 2) }`. */
-    fun Column<*>.total(block: Totals.() -> Expr<*>) {
+    /** Numeric totals return numbers, text totals text, and Boolean totals booleans. */
+    @JvmName("numberTotal")
+    fun Column<Number>.total(block: Totals.() -> Expr<Number>): Unit = formulaTotal(this, block)
+
+    @JvmName("textTotal")
+    fun Column<String>.total(block: Totals.() -> Expr<String>): Unit = formulaTotal(this, block)
+
+    @JvmName("booleanTotal")
+    fun Column<Boolean>.total(block: Totals.() -> Expr<Boolean>): Unit = formulaTotal(this, block)
+
+    private fun formulaTotal(column: Column<*>, block: Totals.() -> Expr<*>) {
       val expr = TotalsScope.block()
       this@SheetBuilder.checkOwned(expr)
       require(expr.references().none { it is Expr.Ref }) { "A total cannot reference a single row: $expr" }
-      put(this, TotalSpec.Formula(expr))
+      put(column, TotalSpec.Formula(expr))
     }
 
     /** `SUM(E2:E4)` */
@@ -220,8 +354,11 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     /** `MAX(E2:E4)` */
     fun Column<Number>.max(): Unit = total { max(this@max) }
 
-    /** `COUNTA(A2:A4)` */
-    fun Column<*>.count(): Unit = total { count(this@count) }
+    /** `COUNT(A2:A4)`: numeric cells only; blanks and errors do not count. */
+    fun Column<Number>.count(): Unit = total { count(this@count) }
+
+    /** `COUNTA(A2:A4)`: non-blank cells, including text, booleans and errors. */
+    fun Column<*>.countNonBlank(): Unit = formulaTotal(this) { countNonBlank(this@countNonBlank) }
 
     private fun put(column: Column<*>, spec: TotalSpec) {
       val sheet = this@SheetBuilder

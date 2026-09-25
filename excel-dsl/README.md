@@ -34,7 +34,21 @@ number, text or Boolean formulas. Text comparisons ignore case. Boolean and text
 normalize blank source cells to `false` and `""`, respectively. Date columns remain data
 columns; formula references support number, text and Boolean columns.
 
-Number literals and data cells use the same finite-number, precision and range checks.
+Named columns register immediately: `column("Customer") { it.customer }`, just like
+`formula("Total") { hours * rate }`. The string shorthand `"Customer" { it.customer }`
+is equivalent. Their handles may be ignored. Unnamed `column` and `formula` return
+delegates: bind them with `by` to register the column.
+
+The library is compiled with `-Xreturn-value-checker=full`, exporting checking metadata.
+Consumers enable `-Xreturn-value-checker=check` or `full` to warn about discarded delegates.
+Immediate registration APIs use `@IgnorableReturnValue`. Saving a delegate in an unused
+variable does not trigger this checker; it still needs `by` to register.
+
+Number literals, evaluation and writing use the same finite-number, precision and range checks.
+`BigDecimal` and `BigInteger` have explicit column overloads that preserve their input types
+in typed evaluation. They remain numeric Excel cells: arbitrary precision cannot be preserved
+in a numeric cell. Use a string column for exact digits, or explicitly round the input before
+passing it to a numeric column. Formats change appearance, not numeric precision.
 Unsupported `Long`, `BigInteger` and `BigDecimal` values fail before silently losing digits.
 `Double` and `Float` inputs already carry floating-point rounding; they must be finite.
 
@@ -57,10 +71,23 @@ check(result == CellResult.Value(6.0))
 ```
 
 `CellResult.Value` holds a value or blank; `CellResult.Error` holds an `ExcelError`.
-Looking up a foreign column fails. Standalone `Expr<V>.evaluate(...)` also returns
-`CellResult<V>`. `sheet.totals(rows)` traverses rows once, evaluates only dependencies of
+Looking up a foreign column fails. Raw map evaluation, expression nodes and rendering are
+internal; the public API builds expressions through typed operations and evaluates schemas.
+`sheet.totals(rows)` traverses rows once, evaluates only dependencies of
 the requested totals, and keeps fixed-size accumulators per referenced column. Empty
 inputs have no totals row.
+
+`total { }` has explicit numeric, text and Boolean overloads matching the destination column's
+cell category. `label(...)` explicitly places text under any column. `count()` uses `COUNT`
+for numeric columns, ignoring blanks and errors. `countNonBlank()` uses `COUNTA` for any
+column, including text, booleans, empty strings and errors. Use the same names inside a
+custom totals formula: `count(hours)` or `countNonBlank(customer)`.
+
+Written formulas include their computed numeric, text, Boolean or error result. This is
+Excel's serialized formula result, so readers without a formula engine see the correct value.
+Schemas and expression trees remain immutable. Each extractor runs once per written row;
+only the current evaluated row and fixed-size totals accumulators are retained. The workbook
+also requests recalculation when opened, to support later edits in Excel.
 
 ## Workbooks
 
@@ -85,15 +112,26 @@ Path overloads default to the filename without its extension. Pass `name` to cho
 sheet name independently. Invalid names fail before opening the destination. `generateExcel`
 also accepts lists, sequences and flows with an optional `name` before the trailing lambda.
 
+File overloads accept `vararg options: OpenOption`, following `Files.newOutputStream`.
+By default they create or truncate the destination; failure can leave an empty or partial
+file. Pass `options = arrayOf(StandardOpenOption.CREATE_NEW)` to refuse replacement.
+For atomic replacement, write a sibling temporary file, close it successfully, then move
+it to the destination with the desired replacement/atomicity options. The caller chooses
+that policy; caller-provided streams remain open.
+
 ## API migration
 
 - Replace raw `Expr` types with `Expr<Number>`, `Expr<Boolean>`, `Expr<String>` or `Expr<*>`.
 - Boolean formula columns are `Column<Boolean>`; use `.asNumber()` before arithmetic.
 - Replace numeric conditions with `.asBoolean()` and mixed-type branches with matching types.
-- Handle `CellResult` from standalone evaluation and `ExcelError` in header maps instead of
-  expecting infinity or NaN for spreadsheet errors.
+- Use `evaluateTyped` for `CellResult`, or handle `ExcelError` in header maps. Raw map-based
+  expression evaluation is internal.
 - Build references with `.ref()`, comparisons with the infix operators, and conditionals
-  with `then` / `otherwise`. Their AST constructors are internal to preserve type constraints.
+  with `then` / `otherwise`. Expression nodes and rendering are internal to preserve type constraints.
+- Replace old `count()` / `count(column)` calls with `countNonBlank()` / `countNonBlank(column)`
+  to retain `COUNTA` behavior. `count` now explicitly means numeric `COUNT`.
+- Custom totals must return the destination column's cell category. Use the explicit
+  `label` and `countNonBlank` operations when a footer intentionally holds another type.
 
 Run `./gradlew :excel-dsl:test`. The tests include POI agreement, streaming lifecycle and
 compilation of valid and invalid client programs against the public API.

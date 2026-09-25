@@ -2,6 +2,7 @@
 
 package excel.dsl
 
+import java.nio.file.OpenOption
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -26,10 +27,11 @@ inline fun <T> generateExcel(
   rows: Sequence<T>,
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
+  vararg options: OpenOption,
   block: SheetBuilder<T>.() -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  sheet(config, block).write(Path(path), rows, name)
+  sheet(config, block).write(Path(path), rows, name, *options)
 }
 
 /** Like the `Sequence` overload, suspending while [rows] arrive. The block and column lambdas do not suspend. */
@@ -38,10 +40,11 @@ suspend inline fun <T> generateExcel(
   rows: Flow<T>,
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
+  vararg options: OpenOption,
   block: SheetBuilder<T>.() -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  sheet(config, block).write(Path(path), rows, name)
+  sheet(config, block).write(Path(path), rows, name, *options)
 }
 
 /** Convenience overload for ordinary lists and other iterables. */
@@ -50,8 +53,9 @@ inline fun <T> generateExcel(
   rows: Iterable<T>,
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
+  vararg options: OpenOption,
   block: SheetBuilder<T>.() -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  generateExcel(path, rows.asSequence(), config, name, block)
+  generateExcel(path, rows.asSequence(), config, name, *options, block = block)
 }

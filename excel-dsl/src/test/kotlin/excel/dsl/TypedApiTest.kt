@@ -122,7 +122,7 @@ class TypedApiTest {
       val combined by formula { compared and false }
       val summed by formula { sum(listOf(error, n)) }
       val lazy by formula { n gt 0 then 1 otherwise error }
-      totals { error.sum(); compared.count(); selected.total { sum(error) gt 0 then 1 otherwise 2 } }
+      totals { error.sum(); compared.countNonBlank(); selected.total { sum(error) gt 0 then 1 otherwise 2 } }
     }
     assertEquals(ExcelError.DivisionByZero, schema.evaluate(1)["Selected"])
     assertEquals(1.0, schema.evaluate(1)["Lazy"])
@@ -139,7 +139,7 @@ class TypedApiTest {
       val unused by column { unusedValue() }
       val double by formula { n * 2 }
       val chained by formula { double + 1 }
-      totals { chained.sum(); double.average(); n.count() }
+      totals { chained.sum(); double.average(); n.countNonBlank() }
     }
     val rows = sequence { repeat(100_000) { pulled++; yield(1) } }.constrainOnce()
     assertEquals(mapOf("N" to 100_000.0, "Double" to 2.0, "Chained" to 300_000.0), schema.totals(rows))

@@ -1,7 +1,7 @@
 package excel.dsl
 
 import excel.dsl.AggregateFunction.Average
-import excel.dsl.AggregateFunction.Count
+import excel.dsl.AggregateFunction.CountNonBlank as Count
 import excel.dsl.AggregateFunction.Max
 import excel.dsl.AggregateFunction.Min
 import excel.dsl.AggregateFunction.Sum

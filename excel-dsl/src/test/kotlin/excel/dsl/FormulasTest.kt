@@ -117,7 +117,7 @@ class FormulasTest {
     assertEquals(aggregate(AggregateFunction.Average, a), total { average(a) })
     assertEquals(aggregate(AggregateFunction.Min, a), total { min(a) })
     assertEquals(aggregate(AggregateFunction.Max, a), total { max(a) })
-    assertEquals(aggregate(AggregateFunction.Count, text), total { count(text) })
+    assertEquals(aggregate(AggregateFunction.CountNonBlank, text), total { countNonBlank(text) })
   }
 
   @Test

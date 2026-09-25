@@ -74,11 +74,11 @@ class TotalsTest {
       val total by formula { hours * rate }
       val gross by formula { total * 1.21 }
       totals {
-        customer.count()
+        customer.countNonBlank()
         hours.min()
         rate.max()
         total.total { sum(total) gt 5000 then sum(total) * 0.9 otherwise sum(total) }
-        gross.total { round(sum(gross) / count(customer), 2) }
+        gross.total { round(sum(gross) / countNonBlank(customer), 2) }
       }
     }
     assertEquals(
@@ -105,9 +105,10 @@ class TotalsTest {
   fun `a comparison total is a Boolean`() {
     val sheet = sheet<Invoice> {
       val hours by column { it.hours }
-      totals { hours.total { sum(hours) gt 30 } }
+      val enough by formula { hours gt 0 }
+      totals { enough.total { sum(hours) gt 30 } }
     }
-    assertEquals(mapOf("Hours" to true), sheet.totals(invoices.asSequence()))
+    assertEquals(mapOf("Enough" to true), sheet.totals(invoices.asSequence()))
   }
 
   @Test
@@ -117,7 +118,7 @@ class TotalsTest {
       val long by formula { bonus gt 15 }
       totals {
         bonus.average()
-        long.count()
+        long.countNonBlank()
       }
     }
     assertEquals(mapOf("Bonus" to 16.0, "Long" to 3.0), sheet.totals(invoices.asSequence()))
@@ -136,7 +137,7 @@ class TotalsTest {
         customer.label("Total")
         hours.sum()
         rate.average()
-        total.total { round(sum(total) / count(customer), 1) }
+        total.total { round(sum(total) / countNonBlank(customer), 1) }
         empty.average()
       }
     }

@@ -1,6 +1,7 @@
 package excel.dsl
 
 import java.io.OutputStream
+import java.nio.file.OpenOption
 import java.nio.file.Path
 import kotlin.io.path.outputStream
 
@@ -22,8 +23,8 @@ class Workbook internal constructor(private val sheets: List<Entry<*>>) {
 }
 
 /** Writes [Workbook.write] to a file. */
-fun Workbook.write(path: Path) {
-  path.outputStream().use(::write)
+fun Workbook.write(path: Path, vararg options: OpenOption) {
+  path.outputStream(*options).use(::write)
 }
 
 @ExcelDsl

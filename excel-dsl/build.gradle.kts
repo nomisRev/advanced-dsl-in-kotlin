@@ -20,6 +20,7 @@ kotlin {
   jvmToolchain(21)
   compilerOptions.freeCompilerArgs.addAll(
     "-Xcollection-literals",
+    "-Xreturn-value-checker=full",
     "-Xcontext-parameters",
     "-Xcompanion-blocks-and-extensions",
     "-Xcontext-sensitive-resolution",

@@ -29,7 +29,7 @@ class CompileSafetyTest {
       K2JVMCompiler().exec(
         output, "-no-stdlib", "-no-reflect", "-jvm-target", "21",
         "-language-version", "2.5", "-Xcollection-literals", "-Xcompanion-blocks-and-extensions",
-        "-Xcontext-sensitive-resolution",
+        "-Xcontext-sensitive-resolution", "-Xreturn-value-checker=check",
         "-classpath", System.getProperty("dsl.compile.classpath"),
         "-d", dir.resolve(name).createDirectories().toString(), source.toString(),
       )
@@ -103,4 +103,87 @@ class CompileSafetyTest {
       assertEquals(ExitCode.COMPILATION_ERROR, exit, message)
     }
   }
+  @Test
+  fun `full mode exports warnings to check mode consumers`() {
+    val (exit, message) = compile("IgnoredDelegates", """
+      val schema = sheet<Int> {
+        column { it }
+        formula { literal(1) }
+        column("Named") { it }
+        formula("Named formula") { literal(2) }
+      }
+      println(schema.headers)
+    """)
+    assertEquals(ExitCode.OK, exit, message)
+    assertTrue(message.contains("unused return value of 'column'"), message)
+    assertTrue(message.contains("unused return value of 'formula'"), message)
+    assertEquals(2, Regex("unused return value").findAll(message).count(), message)
+  }
+
+  @Test
+  fun `unsafe expression entry points are internal`() {
+    for ((index, expression) in listOf(
+      "n.ref().evaluate(mapOf(n to \"wrong\"))",
+      "Expr.Range(n)",
+      "Expr.Constant(1.0)",
+      "Expr.Aggregate(AggregateFunction.Sum, listOf(n.ref()))",
+    ).withIndex()) {
+      val (exit, message) = compile("Internal$index", """
+        val schema = sheet<Int> {
+          val n by column { it }
+          formula("Bad") { $expression }
+        }
+      """)
+      assertEquals(ExitCode.COMPILATION_ERROR, exit, message)
+      assertTrue(message.contains("internal"), message)
+    }
+  }
+
+  @Test
+  fun `total overloads reject mismatched types and numeric count rejects text`() {
+    for ((index, statement) in listOf(
+      "n.total { literal(true) }",
+      "text.total { sum(n) }",
+      "flag.total { literal(1) }",
+      "text.count()",
+      "n.total { count(text) }",
+    ).withIndex()) {
+      val (exit, message) = compile("TotalType$index", """
+        val schema = sheet<Int> {
+          val n by column { it }
+          val text by column { it.toString() }
+          val flag by column { it > 0 }
+          totals { $statement }
+        }
+      """)
+      assertEquals(ExitCode.COMPILATION_ERROR, exit, message)
+    }
+  }
+
+  @Test
+  fun `named overloads preserve decimal and integer types`() {
+    val (exit, message) = compile("NamedTypes", """
+      val schema = sheet<Int> {
+        val text: Column<String> = column("Text") { it.toString() }
+        val n: Column<Number> = column("Number") { it }
+        val decimal: Column<java.math.BigDecimal> by column { it.toBigDecimal() }
+        val integer: Column<java.math.BigInteger> = column("Integer") { it.toBigInteger() }
+        val flag: Column<Boolean> = column("Flag") { it > 0 }
+        val date = column("Date") { java.time.LocalDate.of(2026, 9, 1) }
+        val at = column("At") { java.time.LocalDateTime.of(2026, 9, 1, 12, 0) }
+        val instant = column("Instant") { java.time.Instant.EPOCH }
+        val enum = column("Enum") { java.time.DayOfWeek.MONDAY }
+        val amount = formula("Amount") { decimal + integer }
+        totals {
+          text.total { sum(n) gt 0 then "positive" otherwise "other" }
+          n.count()
+          flag.total { sum(n) gt 0 }
+          amount.sum()
+        }
+      }
+      println(schema.headers)
+    """)
+    assertEquals(ExitCode.OK, exit, message)
+  }
+
 }

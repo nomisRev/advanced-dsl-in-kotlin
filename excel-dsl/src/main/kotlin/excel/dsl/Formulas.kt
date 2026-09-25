@@ -28,8 +28,10 @@ sealed interface Totals : Arithmetic {
   fun average(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Average, column)
   fun min(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Min, column)
   fun max(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Max, column)
-  /** COUNTA counts non-empty cells, including text, booleans and errors. */
-  fun count(column: Column<*>): Expr<Double> = aggregate(AggregateFunction.Count, column)
+  /** COUNT counts numeric cells, excluding blanks and errors. */
+  fun count(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Count, column)
+  /** COUNTA counts non-blank cells, including text, booleans and errors. */
+  fun countNonBlank(column: Column<*>): Expr<Double> = aggregate(AggregateFunction.CountNonBlank, column)
   private fun aggregate(function: AggregateFunction, column: Column<*>): Expr<Double> =
     Expr.Aggregate(function, listOf(Expr.Range(column)))
 }

@@ -6,6 +6,8 @@ import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import org.apache.poi.ss.usermodel.Cell
+import org.apache.poi.ss.usermodel.FormulaError
 import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.ss.util.WorkbookUtil
@@ -29,6 +31,7 @@ internal const val MAX_DIGITS = 15
 internal inline fun streamWorkbook(output: OutputStream, write: StreamingWorkbook.() -> Unit) {
   SXSSFWorkbook(ROW_WINDOW).use { poi ->
     StreamingWorkbook(poi).write()
+    poi.setForceFormulaRecalculation(true)
     poi.write(output)
   }
 }
@@ -65,6 +68,9 @@ internal class SheetWriter<T>(
   private val workbook: StreamingWorkbook,
 ) {
   private var written = 0
+  private val summaries = sheet.totals.values.filterIsInstance<TotalSpec.Formula>()
+    .flatMap { it.expr.references() }.mapNotNull { it.referencedColumn }.distinct()
+    .associateWith { RangeSummary() }
   private val maxDataRows = MAX_ROWS - 1 - if (sheet.totals.isEmpty()) 0 else 1
 
   init {
@@ -84,11 +90,11 @@ internal class SheetWriter<T>(
     written++
     val cells = poi.createRow(written)
     val excelRow = written + 1
+    // Evaluate each extractor once. Keep only this row and constant-size totals summaries.
+    val values = sheet.evaluateRow(row, excelRow = excelRow)
+    summaries.forEach { (column, summary) -> summary.add(values.getValue(column)) }
     sheet.columns.forEachIndexed { index, spec ->
-      val value = when (spec) {
-        is ColumnSpec.Data -> spec.value(row) ?: return@forEachIndexed
-        is ColumnSpec.Formula -> spec.expr
-      }
+      val value = values.getValue(spec.column) ?: return@forEachIndexed
       val cell = cells.createCell(index)
       cell.cellStyle = workbook.style(spec.format(value), bold = false)
       fun fail(reason: String): Nothing = throw IllegalArgumentException("${spec.column.name}, row $excelRow: $reason")
@@ -102,9 +108,11 @@ internal class SheetWriter<T>(
         is LocalDate -> cell.setCellValue(value)
         is LocalDateTime -> cell.setCellValue(value)
         is Instant -> cell.setCellValue(LocalDateTime.ofInstant(value, sheet.zone))
-        is Expr<*> -> cell.cellFormula = value.toExcel(excelRow)
+        is ExcelError -> cell.setCellErrorValue(FormulaError.forString(value.text).code)
         else -> fail("unsupported cell value $value")
       }
+      // POI preserves the typed value when turning the cell into a formula cell.
+      if (spec is ColumnSpec.Formula) cell.cellFormula = spec.expr.toExcel(excelRow)
     }
   }
 
@@ -121,6 +129,10 @@ internal class SheetWriter<T>(
             cell.cellStyle = workbook.style(null, bold = true)
           }
           is TotalSpec.Formula -> {
+            cell.setFormulaResult(total.expr.evaluateRaw(
+              cell = { error("A total has no row") },
+              range = summaries::getValue,
+            ))
             cell.cellFormula = total.expr.toExcel(written + 2, data)
             cell.cellStyle = workbook.style(sheet.columns[index].format(total.expr), bold = true)
           }
@@ -130,6 +142,28 @@ internal class SheetWriter<T>(
     if (sheet.autoFilter && sheet.columns.isNotEmpty()) {
       poi.setAutoFilter(CellRangeAddress(0, written, 0, sheet.columns.lastIndex))
     }
+  }
+}
+
+private fun Cell.setFormulaResult(value: Any?) {
+  when (value) {
+    is Number -> setCellValue(value.toDouble())
+    is String -> setCellValue(value)
+    is Boolean -> setCellValue(value)
+    is ExcelError -> setCellErrorValue(FormulaError.forString(value.text).code)
+    else -> error("Unsupported formula result: $value")
+  }
+}
+
+/** Shared by evaluation and writing; preserves the caller's typed data value. */
+internal fun validateCell(value: Any?, header: String, excelRow: Int?) {
+  fun fail(reason: String): Nothing {
+    val location = if (excelRow == null) header else "$header, row $excelRow"
+    throw IllegalArgumentException("$location: $reason")
+  }
+  when (value) {
+    is Number -> if (value.toExcelDouble() == null) fail(value.unsupported())
+    is String -> if (value.length > MAX_TEXT) fail("text longer than Excel's $MAX_TEXT characters")
   }
 }
 

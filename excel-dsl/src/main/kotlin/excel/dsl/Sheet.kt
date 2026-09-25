@@ -1,6 +1,7 @@
 package excel.dsl
 
 import java.io.OutputStream
+import java.nio.file.OpenOption
 import java.nio.file.Path
 import java.time.ZoneId
 import kotlin.io.path.nameWithoutExtension
@@ -58,7 +59,10 @@ class Sheet<in T> internal constructor(
     return totals.toSortedMap().entries.associate { (index, spec) ->
       headers[index] to when (spec) {
         is TotalSpec.Label -> spec.text
-        is TotalSpec.Formula -> spec.expr.evaluateRaw(cell = { error("A total has no row") }, range = summaries::getValue)
+        is TotalSpec.Formula -> spec.expr.evaluateRaw(
+          cell = { error("A total has no row") },
+          range = summaries::getValue
+        )
       }
     }
   }
@@ -80,17 +84,17 @@ class Sheet<in T> internal constructor(
     write(output, rows.asSequence(), name)
   }
 
-  /** Like the `Sequence` overload, collecting [rows] on `Dispatchers.IO`, since Apache POI blocks. */
+  /** Like the `Sequence` overload, collecting [rows], make sure to run on appropriate dispatcher since Apache POI blocks. */
   suspend fun write(output: OutputStream, rows: Flow<T>, name: String = DEFAULT_NAME) {
     flowWorkbook { sheet(name, this@Sheet, rows) }.write(output)
   }
 
-  private fun evaluateRow(row: T, needed: Set<Column<*>>? = null): Map<Column<*>, Any?> {
+  internal fun evaluateRow(row: T, needed: Set<Column<*>>? = null, excelRow: Int? = null): Map<Column<*>, Any?> {
     val values = LinkedHashMap<Column<*>, Any?>()
     for (spec in columns) {
       if (needed != null && spec.column !in needed) continue
       values[spec.column] = when (spec) {
-        is ColumnSpec.Data -> spec.value(row)
+        is ColumnSpec.Data -> spec.value(row).also { validateCell(it, spec.column.name, excelRow) }
         is ColumnSpec.Formula -> spec.expr.evaluateRaw(cell = values::getValue, range = { error("A row has no range") })
       }
     }
@@ -102,20 +106,38 @@ class Sheet<in T> internal constructor(
   }
 }
 
-/** Writes a file, and names the sheet after it: `q1.xlsx` gets `q1`. */
-fun <T> Sheet<T>.write(path: Path, rows: Sequence<T>, name: String = path.nameWithoutExtension) {
+/**
+ * Writes a file, named after it by default: `q1.xlsx` gets `q1`.
+ * [options] follow [java.nio.file.Files.newOutputStream]: create or truncate by default.
+ * Use `CREATE_NEW` to refuse replacement. A failed write can leave a partial file;
+ * write a temporary file and move it afterward when replacement must be atomic.
+ */
+fun <T> Sheet<T>.write(
+  path: Path,
+  rows: Sequence<T>,
+  name: String = path.nameWithoutExtension,
+  vararg options: OpenOption
+) {
   checkSheetName(name)
-  path.outputStream().use { write(it, rows, name) }
+  path.outputStream(*options).use { write(it, rows, name) }
 }
 
 /** Writes a file from a [Flow], naming the sheet after it. */
-suspend fun <T> Sheet<T>.write(path: Path, rows: Flow<T>, name: String = path.nameWithoutExtension) {
+suspend fun <T> Sheet<T>.write(
+  path: Path,
+  rows: Flow<T>,
+  name: String = path.nameWithoutExtension,
+  vararg options: OpenOption
+) {
   checkSheetName(name)
-  withContext(Dispatchers.IO) {
-    path.outputStream().use { write(it, rows, name) }
-  }
+  path.outputStream(*options).use { write(it, rows, name) }
 }
 
-fun <T> Sheet<T>.write(path: Path, rows: Iterable<T>, name: String = path.nameWithoutExtension) {
-  write(path, rows.asSequence(), name)
+fun <T> Sheet<T>.write(
+  path: Path,
+  rows: Iterable<T>,
+  name: String = path.nameWithoutExtension,
+  vararg options: OpenOption
+) {
+  write(path, rows.asSequence(), name, *options)
 }
