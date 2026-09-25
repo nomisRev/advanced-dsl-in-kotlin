@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 class Sheet<in T> internal constructor(
   internal val columns: List<ColumnSpec<T>>,
   internal val totals: Map<Int, TotalSpec>,
-  internal val freezeHeader: Boolean,
+  internal val freezePanes: Boolean,
   internal val autoFilter: Boolean,
   internal val zone: ZoneId,
 ) {
@@ -26,8 +26,8 @@ class Sheet<in T> internal constructor(
   /**
    * One row as values, keyed by header in column order, without Excel.
    * Data columns hold what their lambda returned; formulas the `Double`
-   * that [Expr.evaluate] computes from the columns before them, or a
-   * `Boolean` when the formula is a comparison, as Excel shows it.
+   * computed from the columns before them, or a `Boolean` when the result
+   * is a comparison, including one selected by `IF`, as Excel shows it.
    */
   fun evaluate(row: T): Map<String, Any?> =
     evaluateRow(row).mapKeys { it.key.name }
@@ -37,15 +37,14 @@ class Sheet<in T> internal constructor(
    * columns with a total. Empty without rows, since no totals row is written.
    */
   fun totals(rows: Sequence<T>): Map<String, Any?> {
+    if (totals.isEmpty()) return emptyMap()
     val values = columns.associate { it.column to mutableListOf<Any?>() }
     for (row in rows) evaluateRow(row).forEach { (column, value) -> values.getValue(column) += value }
     if (values.values.first().isEmpty()) return emptyMap()
     return totals.toSortedMap().entries.associate { (index, spec) ->
       headers[index] to when (spec) {
         is TotalSpec.Label -> spec.text
-        is TotalSpec.Formula -> spec.expr.result(
-          spec.expr.evaluate(cell = { error("A total has no row") }, range = values::getValue),
-        )
+        is TotalSpec.Formula -> spec.expr.evaluate(cell = { error("A total has no row") }, range = values::getValue)
       }
     }
   }
@@ -72,9 +71,7 @@ class Sheet<in T> internal constructor(
     for (spec in columns) {
       values[spec.column] = when (spec) {
         is ColumnSpec.Data -> spec.value(row)
-        is ColumnSpec.Formula -> spec.expr.result(
-          spec.expr.evaluate(cell = values::get, range = { error("A row has no range") }),
-        )
+        is ColumnSpec.Formula -> spec.expr.evaluate(cell = values::get, range = { error("A row has no range") })
       }
     }
     return values
@@ -84,9 +81,6 @@ class Sheet<in T> internal constructor(
     const val DEFAULT_NAME = "Sheet1"
   }
 }
-
-/** A comparison shows as `TRUE` or `FALSE`, everything else as a number. */
-private fun Expr.result(value: Double): Any = if (this is Expr.Compare) value != 0.0 else value
 
 /** Writes a file, and names the sheet after it: `q1.xlsx` gets `q1`. */
 fun <T> Sheet<T>.write(path: Path, rows: Sequence<T>) {

@@ -89,7 +89,7 @@ fun <T> assertExcelAgrees(sheet: Sheet<T>, rows: List<T>) {
     val cells = poi.getRow(index + 1)
     assertEquals(
       sheet.evaluate(row).mapValues { expected(it.value) },
-      sheet.headers.withIndex().associate { (column, header) -> header to computed(cells.getCell(column)) },
+      sheet.headers.withIndex().associate { [column, header] -> header to computed(cells.getCell(column)) },
       "row ${index + 2}",
     )
   }

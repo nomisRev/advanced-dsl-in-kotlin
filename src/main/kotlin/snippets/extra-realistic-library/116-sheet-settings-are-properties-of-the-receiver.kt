@@ -9,7 +9,7 @@ import excel.dsl.*
 suspend fun main() {
   generateExcel("invoices.xlsx", invoices) {
     autoFilter = true
-    freezeHeader = false
+    freezePanes = false
     val customer by column { it.customer }
     val hours by column { it.hours }
   }

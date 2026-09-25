@@ -6,7 +6,6 @@ import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.ss.util.WorkbookUtil
@@ -77,7 +76,7 @@ internal class SheetWriter<T>(
       }
       poi.setColumnWidth(index, spec.width() * 256)
     }
-    if (sheet.freezeHeader) poi.createFreezePane(0, 1)
+    if (sheet.freezePanes) poi.createFreezePane(0, 1)
   }
 
   fun write(row: T) {
@@ -145,13 +144,14 @@ private fun ColumnSpec<*>.format(value: Any): CellFormat? =
 /** The header plus some room, at least 10 characters, 20 for a date and time. */
 private fun ColumnSpec<*>.width(): Int =
   layout.width ?: maxOf(column.name.length + 2, if (layout.format == CellFormat.DateTime) 20 else 10)
+    .coerceAtMost(MAX_WIDTH)
 
 /** `null` when Excel cannot hold the number without losing digits. */
 private fun Number.toExcelDouble(): Double? = when (this) {
   is Double -> takeIf { it.isFinite() }
   is Float -> toDouble().takeIf { it.isFinite() }
-  is BigDecimal -> takeIf { it.fits() }?.toDouble()
-  is BigInteger -> takeIf { it.toBigDecimal().fits() }?.toDouble()
+  is BigDecimal -> takeIf { it.fits() }?.toDouble()?.takeIf { it.isFinite() && (it != 0.0 || signum() == 0) }
+  is BigInteger -> takeIf { it.toBigDecimal().fits() }?.toDouble()?.takeIf { it.isFinite() }
   is Long -> takeIf { it.toBigDecimal().fits() }?.toDouble()
   else -> toDouble()
 }
@@ -160,4 +160,6 @@ private fun BigDecimal.fits(): Boolean = signum() == 0 || stripTrailingZeros().p
 
 private fun Number.unsupported(): String =
   if (this is Double || this is Float) "$this has no Excel equivalent"
+  else if (!toDouble().isFinite() || (this is BigDecimal && signum() != 0 && toDouble() == 0.0))
+    "$this is outside the supported numeric range; write it as text"
   else "$this has more than $MAX_DIGITS significant digits, which Excel cannot store; write it as text"

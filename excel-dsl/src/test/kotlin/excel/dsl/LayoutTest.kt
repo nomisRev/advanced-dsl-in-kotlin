@@ -20,7 +20,7 @@ class LayoutTest {
   @Test
   fun `freezing can be turned off`() {
     val sheet = sheet<Invoice> {
-      freezeHeader = false
+      freezePanes = false
       val customer by column { it.customer }
     }
     assertNull(sheet.written().paneInformation)
@@ -51,6 +51,19 @@ class LayoutTest {
     }
     val widths = (0..2).map { sheet.written().getColumnWidth(it) / 256 }
     assertEquals(listOf(10, 22, 10), widths)
+  }
+
+  @Test
+  fun `long headers cap the inferred width without truncating the text`() {
+    for (length in listOf(253, 254, 255, 32_767)) {
+      val header = "x".repeat(length)
+      val sheet = sheet<Invoice> { header { it.hours } }
+      sheet.writeToBytes().read().use { workbook ->
+        val written = workbook.getSheetAt(0)
+        assertEquals(255 * 256, written.getColumnWidth(0))
+        assertEquals(header, written.getRow(0).getCell(0).stringCellValue)
+      }
+    }
   }
 
   @Test

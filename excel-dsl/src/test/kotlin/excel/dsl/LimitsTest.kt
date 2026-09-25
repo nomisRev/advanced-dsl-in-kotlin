@@ -42,6 +42,32 @@ class LimitsTest {
   }
 
   @Test
+  fun `decimal overflow and underflow fail with the cell location`() {
+    for (text in listOf("1E+400", "-1E+400", "1E-400", "-1E-400")) {
+      val value = BigDecimal(text)
+      assertEquals(
+        "Amount, row 2: $value is outside the supported numeric range; write it as text",
+        failure { "Amount" { value } },
+      )
+    }
+    for (value in listOf(BigInteger.TEN.pow(400), -BigInteger.TEN.pow(400))) {
+      assertEquals(
+        "Amount, row 2: $value is outside the supported numeric range; write it as text",
+        failure { "Amount" { value } },
+      )
+    }
+  }
+
+  @Test
+  fun `representable decimals and scaled zero remain numeric`() {
+    for (value in listOf(BigDecimal("1E+300"), BigDecimal("-1E-300"), BigDecimal.ZERO.setScale(400))) {
+      sheet<Invoice> { "Amount" { value } }.writeToBytes().read().use { workbook ->
+        assertEquals(value.toDouble(), workbook.getSheetAt(0).getRow(1).getCell(0).numericCellValue)
+      }
+    }
+  }
+
+  @Test
   fun `NaN and infinity have no cell`() {
     assertEquals("A, row 2: NaN has no Excel equivalent", failure { "A" { Double.NaN } })
     assertEquals("A, row 2: Infinity has no Excel equivalent", failure { "A" { Float.POSITIVE_INFINITY } })

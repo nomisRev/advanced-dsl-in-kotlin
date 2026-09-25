@@ -266,7 +266,7 @@ fits the header, at least 10 characters. The format also applies to the column's
 > Part 1, after “One file, many sheets”
 
 <DrawnAnnotation text="autoFilter = true" label="A `var` on `SheetBuilder`, set like a local" />
-<DrawnAnnotation text="freezeHeader = false" label="On by default" color="var(--fundamentals-blue)" />
+<DrawnAnnotation text="freezePanes = false" label="On by default" color="var(--fundamentals-blue)" />
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
 
@@ -275,7 +275,7 @@ import excel.dsl.*
 
 generateExcel("invoices.xlsx", invoices) {
   autoFilter = true
-  freezeHeader = false
+  freezePanes = false
   val customer by column { it.customer }
   val hours by column { it.hours }
 }

@@ -92,37 +92,41 @@ fun Expr.evaluate(row: Map<out Column<*>, Number?>): Double =
       row[column]
     },
     range = { throw IllegalArgumentException("A range only exists in a totals row: $it") },
-  )
+  ).let { number(it) ?: 0.0 }
 
-/** [cell] reads the current row, [range] every data row of a column. */
-internal fun Expr.evaluate(cell: (Column<*>) -> Any?, range: (Column<*>) -> List<Any?>): Double {
-  fun Expr.eval(): Double = evaluate(cell, range)
+/** Preserves Boolean results; [cell] reads the current row, [range] every data row of a column. */
+internal fun Expr.evaluate(cell: (Column<*>) -> Any?, range: (Column<*>) -> List<Any?>): Any {
+  fun Expr.eval(): Any = evaluate(cell, range)
+  fun Expr.numeric(): Double = number(eval()) ?: 0.0
+  fun Expr.operand(): Any? = if (this is Expr.Ref) cell(column) else eval()
 
   return when (this) {
-    is Ref -> number(cell(column)) ?: 0.0
+    is Ref -> cell(column).let { if (it is Boolean) it else number(it) ?: 0.0 }
     is Range -> throw IllegalArgumentException("A range is not a number: $column")
     is Constant -> value
-    is Plus -> left.eval() + right.eval()
-    is Minus -> left.eval() - right.eval()
-    is Times -> left.eval() * right.eval()
-    is Div -> left.eval() / right.eval()
-    is Compare -> if (comparison.test(left.eval().compareTo(right.eval()))) 1.0 else 0.0
+    is Plus -> left.numeric() + right.numeric()
+    is Minus -> left.numeric() - right.numeric()
+    is Times -> left.numeric() * right.numeric()
+    is Div -> left.numeric() / right.numeric()
+    is Compare -> comparison.test(compare(left.operand(), right.operand()))
     is Aggregate -> {
       val values = terms.flatMap { term ->
         when (term) {
           is Range -> range(term.column)
           is Ref -> listOf(cell(term.column))
-          else -> listOf(term.eval())
+          // A Boolean passed directly to an aggregate counts as a number;
+          // a Boolean read from a cell or range is skipped.
+          else -> listOf(term.numeric())
         }
       }
       function.apply(values)
     }
 
-    is Round -> value.eval().let {
+    is Round -> value.numeric().let {
       if (it.isFinite()) it.toBigDecimal().setScale(digits, RoundingMode.HALF_UP).toDouble() else it
     }
 
-    is If -> if (condition.eval() != 0.0) then.eval() else otherwise.eval()
+    is If -> if (condition.numeric() != 0.0) then.eval() else otherwise.eval()
   }
 }
 
@@ -152,6 +156,19 @@ private fun number(value: Any?): Double? = when (value) {
   is Number -> value.toDouble()
   is Boolean -> if (value) 1.0 else 0.0
   else -> null
+}
+
+/** Booleans sort above numbers; a blank compares as false or zero, depending on the other operand. */
+private fun compare(left: Any?, right: Any?): Int = when {
+  left is Boolean && (right is Boolean || right == null) -> left.compareTo(right ?: false)
+  right is Boolean && left == null -> false.compareTo(right)
+  left is Boolean -> 1
+  right is Boolean -> -1
+  else -> {
+    val l = number(left) ?: 0.0
+    val r = number(right) ?: 0.0
+    if (l == r) 0 else l.compareTo(r)
+  }
 }
 
 private fun Comparison.test(order: Int): Boolean = when (this) {

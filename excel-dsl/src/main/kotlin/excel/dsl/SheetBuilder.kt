@@ -55,7 +55,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   private val totals = mutableMapOf<Column<*>, TotalSpec>()
 
   /** Keeps the header row visible while scrolling. */
-  var freezeHeader: Boolean = true
+  var freezePanes: Boolean = true
 
   /** Adds Excel's filter buttons to the header, over the data rows. */
   var autoFilter: Boolean = false
@@ -220,7 +220,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
 
   @PublishedApi
   internal fun build(): Sheet<T> =
-    Sheet(columns.toList(), totals.mapKeys { it.key.index }, freezeHeader, autoFilter, config.zone)
+    Sheet(columns.toList(), totals.mapKeys { it.key.index }, freezePanes, autoFilter, config.zone)
 
   private fun <V> data(header: String, format: CellFormat?, width: Int?, value: (T) -> V?): Column<V> =
     add(header, format, width) { ColumnSpec.Data(it, value) }

@@ -42,6 +42,13 @@ class TotalsTest {
   }
 
   @Test
+  fun `an empty schema has no totals with or without rows`() {
+    val sheet = sheet<Invoice> {}
+    assertEquals(emptyMap(), sheet.totals(emptySequence()))
+    assertEquals(emptyMap(), sheet.totals(invoices.asSequence()))
+  }
+
+  @Test
   fun `columns without a total stay empty`() {
     val sheet = sheet<Invoice> {
       val customer by column { it.customer }
