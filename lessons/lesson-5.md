@@ -20,6 +20,10 @@ kodee: wave
 <DrawnAnnotation text="withVat(total)" label="Reads backwards, we want `total.withVat()`" color="red" />
 
 ```kotlin
+import presentation.support.delegated.Formulas
+import presentation.support.delegated.formula
+import presentation.support.delegated.total
+
 interface Formulas {
   operator fun Column<Number>.times(other: Column<Number>): Cell
   operator fun Column<Number>.times(factor: Double): Cell
@@ -41,6 +45,10 @@ magic-move
 <InlineCompilerError :line="7" text="*" message="Unresolved reference 'times' for operator '*' on receiver of type 'Column<Number>'.">
 
 ```kotlin
+import presentation.support.delegated.Formulas
+import presentation.support.delegated.formula
+import presentation.support.delegated.total
+
 interface Formulas {
   operator fun Column<Number>.times(other: Column<Number>): Cell
   operator fun Column<Number>.times(factor: Double): Cell
@@ -63,6 +71,10 @@ magic-move
 <DrawnAnnotation text="with(formulas)" label="Turn it into a receiver by hand, in every helper" color="red" />
 
 ```kotlin
+import presentation.support.delegated.Formulas
+import presentation.support.delegated.formula
+import presentation.support.delegated.total
+
 interface Formulas {
   operator fun Column<Number>.times(other: Column<Number>): Cell
   operator fun Column<Number>.times(factor: Double): Cell
@@ -106,6 +118,8 @@ fun Column<Number>.withVat(): Cell = this * 1.21
 <TypeHint :line="5" receiver="Formulas">
 
 ```kotlin
+import presentation.support.contexts.*
+
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
@@ -115,7 +129,7 @@ generateExcel("invoices.xlsx", invoices) {
 ```
 ```console
 | hours | rate | total  | gross       |
-| 12    | 90   | =B2*C2 | =D2*1.21    |
+| 12    | 90   | =A2*B2 | =C2*1.21    |
 ```
 
 </TypeHint>

@@ -14,6 +14,52 @@ kodee: wave
 
 ---
 
+# The total is a number, not a formula
+
+<DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, the sheet never recalculates" color="red"  :geometry="{ label: { x: 0.6908, y: 0.4437 }, connector: { type: 'quadratic', start: { x: 0.3755, y: 0.4214 }, control: { x: 0.4046, y: 0.4528 }, end: { x: 0.4576, y: 0.4443 } } }"/>
+
+```kotlin
+import presentation.support.typed.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  column("Customer") { it.customer }
+  column("Hours") { it.hours }
+  column("Rate") { it.rate }
+  column("Total") { it.hours * it.rate }
+}
+```
+```console
+| Customer | Hours | Rate | Total |
+| Ada      | 12    | 90   | 1080  |
+```
+
+---
+magic-move
+---
+
+# Columns become values we can reference
+
+<DrawnAnnotation text="val hours by column" label="The header comes from the property name"  :geometry="{ label: { x: 0.6645, y: 0.2948 }, connector: { type: 'quadratic', start: { x: 0.2950, y: 0.3186 }, control: { x: 0.3920, y: 0.3354 }, end: { x: 0.4596, y: 0.3055 } } }"/>
+<DrawnAnnotation text="hours * rate" label="`hours` is a `Column<Number>`, not an `Int`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.6689, y: 0.4439 }, connector: { type: 'quadratic', start: { x: 0.3950, y: 0.4240 }, control: { x: 0.4231, y: 0.4535 }, end: { x: 0.4793, y: 0.4467 } } }"/>
+
+```kotlin
+import presentation.support.delegated.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  val customer by column { it.customer }
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val total by formula { hours * rate }
+}
+```
+```console
+| customer | hours | rate | total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+
 # `*` only exists inside `formula { }`
 
 <InlineCompilerError :line="6" text="*" message="Unresolved reference 'times' for operator '*' on receiver of type 'Column<Number>'.">
@@ -22,6 +68,8 @@ kodee: wave
 <TypeHint :line="4" receiver="Formulas">
 
 ```kotlin
+import presentation.support.delegated.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
@@ -43,7 +91,7 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="Column<Number>.times" label="The _extension receiver_"  :geometry="{ label: { x: 0.4762, y: 0.3317 } }"/>
 <DrawnAnnotation text="Formulas.() -> Cell" label="The builder brings `Formulas` into scope"  :geometry="{ label: { x: 0.7482, y: 0.4564 }, connector: { type: 'quadratic', start: { x: 0.5047, y: 0.5009 }, control: { x: 0.5472, y: 0.5051 }, end: { x: 0.5642, y: 0.4753 } } }"/>
 
-```kotlin
+```kotlin no-compile
 interface Formulas {
   operator fun Column<Number>.times(other: Column<Number>): Cell
 }
@@ -63,6 +111,11 @@ class SheetBuilder<T> {
 <DrawnAnnotation text="$row" label="`this@ExcelFormulas`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.4871, y: 0.6430 }, connector: { type: 'quadratic', start: { x: 0.3759, y: 0.5579 }, control: { x: 0.3706, y: 0.5939 }, end: { x: 0.3932, y: 0.6222 } } }"/>
 
 ```kotlin
+interface Formulas {
+  operator fun Column<Number>.times(other: Column<Number>): Cell
+}
+
+// Example
 sealed interface Cell {
   data class Formula(val text: String) : Cell
   data class Value(val number: Double) : Cell
@@ -83,6 +136,11 @@ magic-move
 <DrawnAnnotation text="class Evaluate" label="Computes the value: CSV export, previews, tests"  :connect="false" :geometry="{ label: { x: 0.4197, y: 0.3771 } }"/>
 
 ```kotlin
+interface Formulas {
+  operator fun Column<Number>.times(other: Column<Number>): Cell
+}
+
+// Example
 sealed interface Cell {
   data class Formula(val text: String) : Cell
   data class Value(val number: Double) : Cell
@@ -104,6 +162,8 @@ class Evaluate(private val row: Map<Column<*>, Number>) : Formulas {
 <InlineValue :line="4" text="Evaluate(mapOf(hours to 12, rate to 90)).total()" value="Value(number=1080.0)">
 
 ```kotlin
+import presentation.support.delegated.*
+
 val total: Formulas.() -> Cell = { hours * rate }
 
 ExcelFormulas(row = 2).total()
@@ -130,7 +190,7 @@ interface Formulas {
 }
 ```
 
-```java
+```java no-compile
 public final class FormulasKt {
   public static String reference(Column<?> $this$reference, int row);
 }
@@ -153,6 +213,8 @@ Real world: KtMongo's filter DSL declares its operators this way.
 <InlineCompilerError :line="5" text="*" message="Candidate 'fun Column<Number>.times(other: Column<Number>): Cell' is inapplicable because of a receiver type mismatch.">
 
 ```kotlin
+import presentation.support.delegated.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
   val hours by column { it.hours }

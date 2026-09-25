@@ -20,6 +20,8 @@ kodee: wave
 <DrawnAnnotation text="sum(hours, overtime)" label="Allocates a new array on every call" color="var(--fundamentals-pink)" />
 
 ```kotlin
+import presentation.support.varargs.*
+
 interface Formulas {
   fun sum(vararg columns: Column<Number>): Cell
 }
@@ -36,6 +38,8 @@ magic-move
 <DrawnAnnotation text="*billable" label="Copies `billable` into a new array" color="red" />
 
 ```kotlin
+import presentation.support.varargs.*
+
 interface Formulas {
   fun sum(vararg columns: Column<Number>): Cell
 }
@@ -55,6 +59,8 @@ magic-move
 <DrawnAnnotation text="columns: List<Column<Number>>" label="No array, no copy"  :connect="false" :geometry="{ label: { x: 0.4490, y: 0.3208 } }"/>
 
 ```kotlin
+import presentation.support.lists.*
+
 interface Formulas {
   fun sum(columns: List<Column<Number>>): Cell
 }
@@ -76,6 +82,8 @@ magic-move
 <DrawnAnnotation text="[hours, overtime]" label="A `List<Column<Number>>`, from the expected type"  :connect="false" :geometry="{ label: { x: 0.7142, y: 0.5607 } }"/>
 
 ```kotlin
+import presentation.support.lists.*
+
 interface Formulas {
   fun sum(columns: List<Column<Number>>): Cell
 }
@@ -96,7 +104,7 @@ val total by formula { sum(billable) }
 
 <DrawnAnnotation text="inline" label="The body is copied to the call site, no `Function1` object"  :geometry="{ label: { x: 0.6311, y: 0.2633 }, connector: { type: 'quadratic', start: { x: 0.1247, y: 0.2140 }, control: { x: 0.2460, y: 0.2274 }, end: { x: 0.3595, y: 0.2591 } } }"/>
 
-```kotlin
+```kotlin no-compile
 inline fun <T> generateExcel(
   path: String,
   rows: Sequence<T>,
@@ -133,7 +141,7 @@ Column lambdas run once per row, so they have to be stored. Only the outer build
 <DrawnAnnotation text="DeprecationLevel.HIDDEN" label="Invisible to new code, still linked by compiled callers"  :connect="false" :geometry="{ label: { x: 0.7030, y: 0.4225 } }"/>
 <DrawnAnnotation text="fun column(value: (T) -> Number)" label="The delegated replacement" color="var(--fundamentals-pink)"  :connect="false" :geometry="{ label: { x: 0.5824, y: 0.5632 } }"/>
 
-```kotlin
+```kotlin no-compile
 @ExcelDsl
 class SheetBuilder<T> {
   @Deprecated(

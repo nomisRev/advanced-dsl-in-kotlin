@@ -11,6 +11,9 @@ info: |
   Advanced DSL in Kotlin. Scope control, overloads by lambda return type, delegates, member extensions and context parameters.
 themeConfig:
   kodee: greeting
+  snippets:
+    imports:
+      - presentation.support.*
   siteUrl: https://nomisrev.github.io/advanced-dsl-in-kotlin/
   analytics:
     goatcounter: nomsrev

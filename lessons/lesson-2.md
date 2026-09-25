@@ -19,6 +19,8 @@ kodee: wave
 <DrawnAnnotation text="{ it }" label="Compiles, and writes `toString()` into the cell" color="red"  :geometry="{ label: { x: 0.5525, y: 0.3495 }, connector: { type: 'quadratic', start: { x: 0.2972, y: 0.3244 }, control: { x: 0.3111, y: 0.3508 }, end: { x: 0.3284, y: 0.3491 } } }"/>
 
 ```kotlin
+import presentation.support.marked.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
   column("Invoice") { it }
@@ -37,7 +39,7 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="Number" />
 <DrawnAnnotation text="LocalDate" label="Every type a cell can hold" />
 
-```kotlin
+```kotlin no-compile
 import java.time.LocalDate
 
 class SheetBuilder<T> {
@@ -54,6 +56,8 @@ class SheetBuilder<T> {
 <InlineCompilerError :line="3" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.43rem">
 
 ```kotlin
+import presentation.support.typed.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   
   column("Customer") { it.customer }
@@ -73,11 +77,11 @@ return type is the only difference between the candidates. So it gives up.
 
 > Experimental: `@OptIn(ExperimentalTypeInference::class)`
 
-<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" label="Analyse the lambda first, then choose" />
+<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" label="Analyse the lambda first, then choose overload"  :geometry="{ label: { x: 0.6793, y: 0.3900 }, connector: { type: 'quadratic', start: { x: 0.4941, y: 0.4720 }, control: { x: 0.5476, y: 0.4789 }, end: { x: 0.5796, y: 0.4198 } } }"/>
 <DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" occurrence="2" />
 <DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" occurrence="3" />
 
-```kotlin
+```kotlin no-compile
 @file:OptIn(ExperimentalTypeInference::class)
 
 import java.time.LocalDate
@@ -104,7 +108,7 @@ class SheetBuilder<T> {
   @OverloadResolutionByLambdaReturnType
   fun column(
     name: String,
-    value: (T) -> String
+    value: (T) -> String,
     
   )
   
@@ -123,11 +127,11 @@ magic-move
 
 # `@JvmName` gives each overload its own name
 
-<DrawnAnnotation text="@JvmName(&quot;textColumn&quot;)" label="Only Java and the bytecode see this name"  :geometry="{ label: { x: 0.7145, y: 0.4080 }, connector: { type: 'quadratic', start: { x: 0.3285, y: 0.3166 }, control: { x: 0.4276, y: 0.3131 }, end: { x: 0.5262, y: 0.2584 } } }" :connect="false"/>
+<DrawnAnnotation text="@JvmName(&quot;textColumn&quot;)" label="Only Java and the bytecode see this name"  :geometry="{ label: { x: 0.7009, y: 0.2800 }, connector: { type: 'quadratic', start: { x: 0.3285, y: 0.3166 }, control: { x: 0.4276, y: 0.3131 }, end: { x: 0.5262, y: 0.2584 } } }" :connect="false"/>
 <DrawnAnnotation text="@JvmName(&quot;numberColumn&quot;)" />
 <DrawnAnnotation text="@JvmName(&quot;dateColumn&quot;)" />
 
-```kotlin
+```kotlin no-compile
 class SheetBuilder<T> {
   @OverloadResolutionByLambdaReturnType
   @JvmName("textColumn")
@@ -145,11 +149,13 @@ class SheetBuilder<T> {
 
 # Every column has a cell type
 
-<DrawnAnnotation text="{ it.customer }" label="`String`"  :geometry="{ label: { x: 0.5385, y: 0.2410 }, connector: { type: 'quadratic', start: { x: 0.4603, y: 0.2636 }, control: { x: 0.4861, y: 0.2703 }, end: { x: 0.5028, y: 0.2439 } } }"/>
-<DrawnAnnotation text="{ it.hours }" label="`Number`"  :geometry="{ label: { x: 0.5431, y: 0.3004 }, connector: { type: 'quadratic', start: { x: 0.3943, y: 0.3131 }, control: { x: 0.4503, y: 0.3218 }, end: { x: 0.5074, y: 0.2965 } } }"/>
-<DrawnAnnotation text="{ it.issuedOn }" label="`LocalDate`"  :geometry="{ label: { x: 0.5681, y: 0.3599 }, connector: { type: 'quadratic', start: { x: 0.4379, y: 0.3606 }, control: { x: 0.4773, y: 0.3674 }, end: { x: 0.5167, y: 0.3493 } } }"/>
+<DrawnAnnotation text="{ it.customer }" label="`String`"  :geometry="{ label: { x: 0.5385, y: 0.2410 }, connector: { type: 'quadratic', start: { x: 0.4603, y: 0.2636 }, control: { x: 0.4861, y: 0.2703 }, end: { x: 0.5028, y: 0.2439 } } }" :connect="false"/>
+<DrawnAnnotation text="{ it.hours }" label="`Number`"  :geometry="{ label: { x: 0.5431, y: 0.3004 }, connector: { type: 'quadratic', start: { x: 0.3943, y: 0.3131 }, control: { x: 0.4503, y: 0.3218 }, end: { x: 0.5074, y: 0.2965 } } }" :connect="false"/>
+<DrawnAnnotation text="{ it.issuedOn }" label="`LocalDate`"  :geometry="{ label: { x: 0.5681, y: 0.3599 }, connector: { type: 'quadratic', start: { x: 0.4379, y: 0.3606 }, control: { x: 0.4773, y: 0.3674 }, end: { x: 0.5167, y: 0.3493 } } }" :connect="false"/>
 
 ```kotlin
+import presentation.support.typed.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
   column("Hours") { it.hours }
@@ -166,6 +172,8 @@ magic-move
 <InlineCompilerError :line="7" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`">
 
 ```kotlin
+import presentation.support.typed.generateExcel
+
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
   column("Hours") { it.hours }
@@ -180,6 +188,44 @@ generateExcel("invoices.xlsx", invoices) {
 
 </InlineCompilerError>
 
-<!--
-The message is still "ambiguity", but now it means: none of the cell types fit an Invoice.
--->
+---
+magic-move
+---
+
+# Every column has a cell type
+
+```kotlin
+import presentation.support.typed.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  column("Customer") { it.customer }
+  column("Hours") { it.hours }
+  column("Issued") { it.issuedOn }
+  
+  column("custom") { it.custom }
+}
+
+fun SheetBuilder<Invoice>.column(name: String, block: (T) -> CustomType) {
+  column(name) { block(it).toColumnText() }
+}
+```
+
+---
+magic-move
+---
+
+# Every column has a cell type
+
+```kotlin
+import presentation.support.typed.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  invoice()
+}
+
+fun SheetBuilder<Invoice>.invoice() {
+  column("Customer") { it.customer }
+  column("Hours") { it.hours }
+  column("Issued") { it.issuedOn }
+}
+```
