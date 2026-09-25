@@ -10,7 +10,7 @@ import presentation.support.writeWorkbook
 @ExcelDsl
 class SheetBuilder<T> : DelegatedColumns<T>() {
   fun formula(block: Formulas.() -> Cell): ColumnDelegate<Number> =
-    formulaColumn { row -> ExcelFormulas(row).block() }
+    formulaColumn { row -> block(ExcelFormulas(row)) }
 }
 
 fun <T> generateExcel(

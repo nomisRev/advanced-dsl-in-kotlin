@@ -64,6 +64,7 @@ magic-move
 
 <DrawnAnnotation text="formula" on="0" />
 <DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.7029, y: 0.4449 }, connector: { type: 'quadratic', start: { x: 0.4963, y: 0.4232 }, control: { x: 0.5375, y: 0.4573 }, end: { x: 0.5858, y: 0.4483 } } }"/>
+<DrawnAnnotation text="=B2*C2" />
 
 <DrawnAnnotation text="hours" on="1" />
 <DrawnAnnotation text="&quot;Hours&quot;" on="1" />
@@ -84,7 +85,7 @@ generateExcel("invoices.xlsx", invoices) {
 ```
 ```console
 | Customer | Hours | Rate | Total |
-| Ada      | 12    | 90   | 1080  |
+| Ada      | 12    | 90   | =B2*C2 |
 ```
 
 ---

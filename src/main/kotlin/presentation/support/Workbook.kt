@@ -1,6 +1,7 @@
 package presentation.support
 
 import java.io.FileOutputStream
+import java.io.OutputStream
 import java.time.LocalDate
 import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.usermodel.Row
@@ -33,7 +34,11 @@ abstract class SheetColumns<T> {
 
   @PublishedApi
   internal fun toSheet(name: String, rows: Sequence<T>): SheetSpec<T> =
-    SheetSpec(name, rows, columns.toList(), headerStyles.toList())
+    SheetSpec(name, rows, columnSpecs(), headerStyles.toList())
+
+  /** A copy of the columns collected so far, in declaration order. */
+  @PublishedApi
+  internal fun columnSpecs(): List<ColumnSpec<T>> = columns.toList()
 }
 
 class ColumnSpec<in T>(
@@ -57,12 +62,24 @@ fun <T> writeWorkbook(path: String, rows: Sequence<T>, columns: SheetColumns<T>)
  * Streams every sheet: rows are pulled from their `Sequence` one at a time and
  * only the last [ROW_WINDOW] stay in memory, the rest is flushed to disk.
  */
-fun writeWorkbook(path: String, sheets: List<SheetSpec<*>>) {
+fun writeWorkbook(path: String, sheets: List<SheetSpec<*>>) =
+  writeWorkbook(sheets) { workbook ->
+    FileOutputStream(path).use(workbook::write)
+  }
+
+/** Like the `path` overload, but leaves [output] open: a file, an HTTP body. */
+fun writeWorkbook(output: OutputStream, sheets: List<SheetSpec<*>>) =
+  writeWorkbook(sheets) { workbook -> workbook.write(output) }
+
+private inline fun writeWorkbook(
+  sheets: List<SheetSpec<*>>,
+  save: (SXSSFWorkbook) -> Unit,
+) {
   SXSSFWorkbook(ROW_WINDOW).use { workbook ->
     try {
       val styles = Styles(workbook)
       for (sheet in sheets) workbook.write(sheet, styles)
-      FileOutputStream(path).use(workbook::write)
+      save(workbook)
     } finally {
       workbook.dispose()
     }
@@ -71,24 +88,80 @@ fun writeWorkbook(path: String, sheets: List<SheetSpec<*>>) {
 
 private const val ROW_WINDOW = 100
 
-private fun sheetName(path: String): String =
+@PublishedApi
+internal fun sheetName(path: String): String =
   path.substringAfterLast('/').substringBeforeLast('.')
 
 private fun <T> Workbook.write(spec: SheetSpec<T>, styles: Styles) {
-  val sheet = createSheet(spec.name)
-  val headerStyle = styles.header(spec.headerStyles)
-  val header = sheet.createRow(0)
-  spec.columns.forEachIndexed { index, column ->
-    header.createCell(index).apply {
-      setCellValue(column.header)
-      setCellStyle(headerStyle)
+  val sheet = SheetStream(this, styles, spec)
+  spec.rows.forEach(sheet::write)
+}
+
+/**
+ * Streams one sheet named after the file: [write] pushes the rows into the
+ * [SheetStream] one at a time, from a `Sequence`, a `Flow` or a loop.
+ *
+ * `inline`, so [write] may suspend whenever the caller can, and the workbook
+ * is closed and its temp files deleted even when that suspension is cancelled.
+ */
+inline fun <T> streamSheet(
+  path: String,
+  columns: SheetColumns<T>,
+  write: (SheetStream<T>) -> Unit,
+) {
+  StreamingWorkbook().use { workbook ->
+    write(workbook.sheet(sheetName(path), columns))
+    workbook.save(path)
+  }
+}
+
+/**
+ * An SXSSF workbook. In Apache POI 5.5, [close] also disposes of it,
+ * deleting the temp files rows were flushed to; `dispose()` is deprecated.
+ */
+class StreamingWorkbook : AutoCloseable {
+  private val workbook = SXSSFWorkbook(ROW_WINDOW)
+  private val styles = Styles(workbook)
+
+  /** Creates the sheet and writes its header row. */
+  fun <T> sheet(name: String, columns: SheetColumns<T>): SheetStream<T> =
+    SheetStream(workbook, styles, columns.toSheet(name, emptySequence()))
+
+  fun save(path: String) {
+    FileOutputStream(path).use(workbook::write)
+  }
+
+  override fun close() {
+    workbook.close()
+  }
+}
+
+/** One sheet being written: the header on creation, then a row per [write]. */
+class SheetStream<T> internal constructor(
+  workbook: Workbook,
+  private val styles: Styles,
+  private val spec: SheetSpec<T>,
+) {
+  private val sheet = workbook.createSheet(spec.name)
+  private var written = 0
+
+  init {
+    val headerStyle = styles.header(spec.headerStyles)
+    val header = sheet.createRow(0)
+    spec.columns.forEachIndexed { index, column ->
+      header.createCell(index).apply {
+        setCellValue(column.header)
+        setCellStyle(headerStyle)
+      }
     }
   }
-  spec.rows.forEachIndexed { index, value ->
-    val row = sheet.createRow(index + 1)
-    spec.columns.forEachIndexed { column, spec ->
-      row.write(column, spec.value(value, index + 2), spec.bold, styles)
+
+  fun write(row: T) {
+    val cells = sheet.createRow(written + 1)
+    spec.columns.forEachIndexed { index, column ->
+      cells.write(index, column.value(row, written + 2), column.bold, styles)
     }
+    written++
   }
 }
 
@@ -110,7 +183,7 @@ private fun Row.write(index: Int, value: Any?, bold: Boolean, styles: Styles) {
   }
 }
 
-private class Styles(private val workbook: Workbook) {
+internal class Styles(private val workbook: Workbook) {
   private val cells = mutableMapOf<Pair<Boolean, Boolean>, CellStyle>()
   private val boldFont = workbook.createFont().apply { bold = true }
 

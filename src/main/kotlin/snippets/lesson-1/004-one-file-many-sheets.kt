@@ -5,7 +5,6 @@ package snippets.lesson1.slide4
 
 import presentation.support.*
 import presentation.support.leaky.workbook
-import presentation.support.lists.generateExcel
 
 suspend fun main() {
   workbook("invoices.xlsx") {
@@ -16,15 +15,4 @@ suspend fun main() {
       column("Customer", bold = true) { it.customer }
     }
   }
-
-  generateExcel("invoices.xlsx", invoices) {
-    val customer by column { it.customer }
-    val hours by column { it.hours }
-    val rate by column { it.rate }
-  }
 }
-
-
-fun String.capitaliseFirstChar() =
-  replaceFirstChar { it.uppercase() }
-

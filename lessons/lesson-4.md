@@ -16,34 +16,11 @@ kodee: wave
 
 # The total is a number, not a formula
 
-<DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, the sheet never recalculates" color="red"  :geometry="{ label: { x: 0.6908, y: 0.4437 }, connector: { type: 'quadratic', start: { x: 0.3755, y: 0.4214 }, control: { x: 0.4046, y: 0.4528 }, end: { x: 0.4576, y: 0.4443 } } }"/>
+<DrawnAnnotation text="formula" on="0" />
+<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.6171, y: 0.4457 }, connector: { type: 'quadratic', start: { x: 0.4056, y: 0.4244 }, control: { x: 0.4468, y: 0.4585 }, end: { x: 0.4951, y: 0.4495 } } }"/>
 
 ```kotlin
 import presentation.support.typed.generateExcel
-
-generateExcel("invoices.xlsx", invoices) {
-  column("Customer") { it.customer }
-  column("Hours") { it.hours }
-  column("Rate") { it.rate }
-  column("Total") { it.hours * it.rate }
-}
-```
-```console
-| Customer | Hours | Rate | Total |
-| Ada      | 12    | 90   | 1080  |
-```
-
----
-magic-move
----
-
-# Columns become values we can reference
-
-<DrawnAnnotation text="val hours by column" label="The header comes from the property name"  :geometry="{ label: { x: 0.6645, y: 0.2948 }, connector: { type: 'quadratic', start: { x: 0.2950, y: 0.3186 }, control: { x: 0.3920, y: 0.3354 }, end: { x: 0.4596, y: 0.3055 } } }"/>
-<DrawnAnnotation text="hours * rate" label="`hours` is a `Column<Number>`, not an `Int`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.6689, y: 0.4439 }, connector: { type: 'quadratic', start: { x: 0.3950, y: 0.4240 }, control: { x: 0.4231, y: 0.4535 }, end: { x: 0.4793, y: 0.4467 } } }"/>
-
-```kotlin
-import presentation.support.delegated.generateExcel
 
 generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
@@ -53,19 +30,18 @@ generateExcel("invoices.xlsx", invoices) {
 }
 ```
 ```console
-| customer | hours | rate | total  |
+| Customer | Hours | Rate | Total |
 | Ada      | 12    | 90   | =B2*C2 |
 ```
 
 ---
 
-
 # `*` only exists inside `formula { }`
 
-<InlineCompilerError :line="6" text="*" message="Unresolved reference 'times' for operator '*' on receiver of type 'Column<Number>'.">
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" receiver="Formulas">
+<TypeHint :line="4" text="formula {" receiver="Formulas">
+<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`" style="--inline-compiler-error-message-size: 1.4rem">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -73,23 +49,52 @@ import presentation.support.delegated.generateExcel
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
+  val total by formula {
+    hours * rate
+  }
 
   val cost = hours * rate
 }
 ```
 
-</TypeHint>
-</TypeHint>
 </InlineCompilerError>
+</TypeHint>
+</TypeHint>
+
+---
+
+# `*` only exists inside `formula { }`
+
+
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" text="formula {" receiver="Formulas">
+<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`" style="--inline-compiler-error-message-size: 1.4rem">
+
+```kotlin
+import presentation.support.delegated.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val total by formula {
+    hours * rate
+  }
+
+  val cost = hours * rate
+}
+
+interface Formulas {
+  operator fun Column<Number>.times(other: Column<Number>): Cell
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
 
 ---
 
 # An extension declared inside an interface
-
-<DrawnAnnotation text="interface Formulas" label="The _dispatch receiver_" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.4074, y: 0.1840 }, connector: { type: 'quadratic', start: { x: 0.2584, y: 0.2225 }, control: { x: 0.2868, y: 0.2310 }, end: { x: 0.3068, y: 0.1968 } } }"/>
-<DrawnAnnotation text="Column<Number>.times" label="The _extension receiver_"  :geometry="{ label: { x: 0.4762, y: 0.3317 } }"/>
-<DrawnAnnotation text="Formulas.() -> Cell" label="The builder brings `Formulas` into scope"  :geometry="{ label: { x: 0.7482, y: 0.4564 }, connector: { type: 'quadratic', start: { x: 0.5047, y: 0.5009 }, control: { x: 0.5472, y: 0.5051 }, end: { x: 0.5642, y: 0.4753 } } }"/>
 
 ```kotlin no-compile
 interface Formulas {
@@ -105,7 +110,7 @@ class SheetBuilder<T> {
 
 ---
 
-# Two receivers, two `this`
+# One receiver, two strategies
 
 <DrawnAnnotation text="$letter" label="`this: Column<Number>`"  :geometry="{ label: { x: 0.2630, y: 0.6459 } }"/>
 <DrawnAnnotation text="$row" label="`this@ExcelFormulas`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.4871, y: 0.6430 }, connector: { type: 'quadratic', start: { x: 0.3759, y: 0.5579 }, control: { x: 0.3706, y: 0.5939 }, end: { x: 0.3932, y: 0.6222 } } }"/>
@@ -175,42 +180,8 @@ Evaluate(mapOf(hours to 12, rate to 90)).total()
 
 ---
 
-# Only top-level extensions are static
-
-<DrawnAnnotation text="fun Column<*>.reference" label="Top-level: a `static` method"  :connect="false" :geometry="{ label: { x: 0.1899, y: 0.2488 } }"/>
-<DrawnAnnotation text="public static String reference" />
-<DrawnAnnotation text="operator fun Column<Number>.times" label="Member: a virtual call on `Formulas`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.5223, y: 0.2786 } }" :connect="false"/>
-<DrawnAnnotation text="Cell times" color="var(--fundamentals-pink)" />
-
-```kotlin
-fun Column<*>.reference(row: Int): String = "$letter$row"
-
-interface Formulas {
-  operator fun Column<Number>.times(other: Column<Number>): Cell
-}
-```
-
-```java no-compile
-public final class FormulasKt {
-  public static String reference(Column<?> $this$reference, int row);
-}
-
-public interface Formulas {
-  Cell times(Column<Number> $this$times, Column<Number> other);
-}
-```
-
-<!--
-The extension receiver is just the first parameter in both cases.
-What decides static vs virtual is where the function is declared, not that it is an extension.
-Real world: KtMongo's filter DSL declares its operators this way.
--->
-
----
-
 # The receiver type still checks
 
-<InlineCompilerError :line="5" text="*" message="Candidate 'fun Column<Number>.times(other: Column<Number>): Cell' is inapplicable because of a receiver type mismatch.">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -219,8 +190,6 @@ generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { customer * hours }
+  val total by formula { rate * hours }
 }
 ```
-
-</InlineCompilerError>
