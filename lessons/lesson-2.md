@@ -97,7 +97,7 @@ class SheetBuilder<T> {
 
 # The JVM erases the lambda type
 
-<InlineCompilerError :line="3" text="fun column(\nname: String,\n value: (T) -> String\n)" message="Platform declaration clash: The following declarations have the same JVM signature\n(column(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V)" style="--inline-compiler-error-message-size: 1.1rem">
+<InlineCompilerError line="3-7" message="Platform declaration clash: The following declarations have the same JVM signature\n(column(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V)" >
 
 ```kotlin
 class SheetBuilder<T> {
@@ -105,7 +105,9 @@ class SheetBuilder<T> {
   fun column(
     name: String,
     value: (T) -> String
+    
   )
+  
   @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> Number)
   @OverloadResolutionByLambdaReturnType
@@ -121,7 +123,7 @@ magic-move
 
 # `@JvmName` gives each overload its own name
 
-<DrawnAnnotation text="@JvmName(&quot;textColumn&quot;)" label="Only Java and the bytecode see this name"  :geometry="{ label: { x: 0.7194, y: 0.2376 }, connector: { type: 'quadratic', start: { x: 0.3285, y: 0.3166 }, control: { x: 0.4276, y: 0.3131 }, end: { x: 0.5262, y: 0.2584 } } }"/>
+<DrawnAnnotation text="@JvmName(&quot;textColumn&quot;)" label="Only Java and the bytecode see this name"  :geometry="{ label: { x: 0.7145, y: 0.4080 }, connector: { type: 'quadratic', start: { x: 0.3285, y: 0.3166 }, control: { x: 0.4276, y: 0.3131 }, end: { x: 0.5262, y: 0.2584 } } }" :connect="false"/>
 <DrawnAnnotation text="@JvmName(&quot;numberColumn&quot;)" />
 <DrawnAnnotation text="@JvmName(&quot;dateColumn&quot;)" />
 
@@ -161,15 +163,19 @@ magic-move
 
 # Every column has a cell type
 
-<InlineCompilerError :line="5" text="column" message="Overload resolution ambiguity between candidates:\nfun column(name: String, value: (Invoice) -> String): Unit\nfun column(name: String, value: (Invoice) -> Number): Unit\nfun column(name: String, value: (Invoice) -> LocalDate): Unit" style="--inline-compiler-error-message-size: 1.1rem">
+<InlineCompilerError :line="7" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`">
 
 ```kotlin
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
   column("Hours") { it.hours }
   column("Issued") { it.issuedOn }
+  
+  
   column("Invoice") { it }
+  
 }
+
 ```
 
 </InlineCompilerError>
