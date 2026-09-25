@@ -5,6 +5,7 @@
   --fundamentals-ink: #1f2023;
   --drawn-annotation-color: var(--fundamentals-purple, #7954f6);
   --code-window-columns: 80;
+  --cover-text-width: 80%;
 }
 
 html.dark {
@@ -56,7 +57,7 @@ html.dark {
 .slidev-layout blockquote p { margin: 0; line-height: inherit; }
 
 .fundamentals-cover h1 {
-  max-width: 50rem; font-size: 5.2rem !important;
+  max-width: 100rem; font-size: 5.2rem !important;
   background: linear-gradient(120deg, var(--fundamentals-purple), var(--fundamentals-pink));
   background-clip: text; -webkit-background-clip: text; color: transparent;
 }
