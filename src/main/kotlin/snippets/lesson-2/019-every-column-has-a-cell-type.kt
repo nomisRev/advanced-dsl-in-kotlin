@@ -5,6 +5,7 @@ package snippets.lesson2.slide19
 
 import presentation.support.*
 import presentation.support.typed.generateExcel
+import presentation.support.typed.column
 
 suspend fun main() {
   generateExcel("invoices.xlsx", invoices) {

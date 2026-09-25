@@ -7,8 +7,11 @@ import presentation.support.ExcelDsl
 import presentation.support.Invoice
 import presentation.support.writeWorkbook
 
+/** [header] names each column from its property, `{ it }` keeps the name as is. */
 @ExcelDsl
-class SheetBuilder<T> : DelegatedColumns<T>() {
+class SheetBuilder<T>(
+  header: (propertyName: String) -> String = { it },
+) : DelegatedColumns<T>(header) {
   fun formula(block: Formulas.() -> Cell): ColumnDelegate<Number> =
     formulaColumn { row -> block(ExcelFormulas(row)) }
 }

@@ -155,6 +155,7 @@ class SheetBuilder<T> {
 
 ```kotlin
 import presentation.support.typed.generateExcel
+import presentation.support.typed.column
 
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
@@ -192,9 +193,13 @@ generateExcel("invoices.xlsx", invoices) {
 magic-move
 ---
 
-# Every column has a cell type
+# Users add a cell type with an extension
 
-```kotlin
+<DrawnAnnotation text="fun SheetBuilder<Invoice>.column" label="An overload outside the library, on the same receiver" :geometry="{ label: { x: 0.31, y: 0.745 } }" />
+<DrawnAnnotation text="CustomType" label="A `@JvmInline value class` over the invoice reference" color="var(--fundamentals-blue)" :connect="false" :geometry="{ label: { x: 0.40, y: 0.665 } }" />
+
+```kotlin no-compile
+import presentation.support.typed.SheetBuilder
 import presentation.support.typed.generateExcel
 
 generateExcel("invoices.xlsx", invoices) {
@@ -205,7 +210,7 @@ generateExcel("invoices.xlsx", invoices) {
   column("custom") { it.custom }
 }
 
-fun SheetBuilder<Invoice>.column(name: String, block: (T) -> CustomType) {
+fun SheetBuilder<Invoice>.column(name: String, block: (Invoice) -> CustomType) {
   column(name) { block(it).toColumnText() }
 }
 ```
@@ -214,10 +219,14 @@ fun SheetBuilder<Invoice>.column(name: String, block: (T) -> CustomType) {
 magic-move
 ---
 
-# Every column has a cell type
+# An extension groups the columns
+
+<DrawnAnnotation text="fun SheetBuilder<Invoice>.invoice()" label="Named once, called in every sheet" />
 
 ```kotlin
+import presentation.support.typed.SheetBuilder
 import presentation.support.typed.generateExcel
+import presentation.support.typed.column
 
 generateExcel("invoices.xlsx", invoices) {
   invoice()

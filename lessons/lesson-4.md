@@ -20,7 +20,7 @@ kodee: wave
 <DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.6171, y: 0.4457 }, connector: { type: 'quadratic', start: { x: 0.4056, y: 0.4244 }, control: { x: 0.4468, y: 0.4585 }, end: { x: 0.4951, y: 0.4495 } } }"/>
 
 ```kotlin
-import presentation.support.typed.generateExcel
+import presentation.support.delegated.generateExcel
 
 generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
@@ -30,7 +30,7 @@ generateExcel("invoices.xlsx", invoices) {
 }
 ```
 ```console
-| Customer | Hours | Rate | Total |
+| customer | hours | rate | total  |
 | Ada      | 12    | 90   | =B2*C2 |
 ```
 
@@ -54,37 +54,6 @@ generateExcel("invoices.xlsx", invoices) {
   }
 
   val cost = hours * rate
-}
-```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-
----
-
-# `*` only exists inside `formula { }`
-
-
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" receiver="Formulas">
-<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`" style="--inline-compiler-error-message-size: 1.4rem">
-
-```kotlin
-import presentation.support.delegated.generateExcel
-
-generateExcel("invoices.xlsx", invoices) {
-  val hours by column { it.hours }
-  val rate by column { it.rate }
-  val total by formula {
-    hours * rate
-  }
-
-  val cost = hours * rate
-}
-
-interface Formulas {
-  operator fun Column<Number>.times(other: Column<Number>): Cell
 }
 ```
 
@@ -161,6 +130,39 @@ class Evaluate(private val row: Map<Column<*>, Number>) : Formulas {
 
 ---
 
+# Only top-level extensions are static
+
+<DrawnAnnotation text="fun Column<*>.reference" label="Top-level: a `static` method"  :connect="false" :geometry="{ label: { x: 0.1899, y: 0.2488 } }"/>
+<DrawnAnnotation text="public static String reference" />
+<DrawnAnnotation text="operator fun Column<Number>.times" label="Member: a virtual call on `Formulas`" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.5223, y: 0.2786 } }" :connect="false"/>
+<DrawnAnnotation text="Cell times" color="var(--fundamentals-pink)" />
+
+```kotlin
+fun Column<*>.reference(row: Int): String = "$letter$row"
+
+interface Formulas {
+  operator fun Column<Number>.times(other: Column<Number>): Cell
+}
+```
+
+```java no-compile
+public final class FormulasKt {
+  public static String reference(Column<?> $this$reference, int row);
+}
+
+public interface Formulas {
+  Cell times(Column<Number> $this$times, Column<Number> other);
+}
+```
+
+<!--
+The extension receiver is just the first parameter in both cases.
+What decides static vs virtual is where the function is declared, not that it is an extension.
+Real world: KtMongo's filter DSL declares its operators this way.
+-->
+
+---
+
 # The receiver in scope picks the implementation
 
 <InlineValue :line="3" text="ExcelFormulas(row = 2).total()" value="Formula(text==B2*C2)">
@@ -182,6 +184,7 @@ Evaluate(mapOf(hours to 12, rate to 90)).total()
 
 # The receiver type still checks
 
+<InlineCompilerError :line="5" text="*" message="None of the following candidates is applicable:\n`fun Column<Number>.times(other: Column<Number>): Cell` is inapplicable because of a receiver type mismatch.\n`fun Column<Number>.times(factor: Double): Cell` is inapplicable because of a receiver type mismatch." style="--inline-compiler-error-message-size: 1.1rem">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -190,6 +193,14 @@ generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { rate * hours }
+  val total by formula { customer * hours }
 }
 ```
+
+</InlineCompilerError>
+
+<!--
+`customer` is a `Column<String>`. Dynamic dispatch picks the implementation at runtime,
+but the receiver type is still checked at compile time: `times` is only declared on
+`Column<Number>`.
+-->

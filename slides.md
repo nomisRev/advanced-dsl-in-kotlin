@@ -64,5 +64,17 @@ src: ./lessons/lesson-6.md
 ---
 src: ./lessons/closing.md
 ---
+---
+src: ./lessons/extra-flow.md
+---
+---
+src: ./lessons/extra-sheets-as-values.md
+---
+---
+src: ./lessons/extra-tricks.md
+---
+---
+src: ./lessons/extra-realistic-library.md
+---
 
 <!-- End of imported slides. -->

@@ -4,7 +4,7 @@
 package snippets.lesson4.slide39
 
 import presentation.support.*
-import presentation.support.typed.generateExcel
+import presentation.support.delegated.generateExcel
 
 suspend fun main() {
   generateExcel("invoices.xlsx", invoices) {

@@ -36,3 +36,15 @@ val timesheets: Sequence<Timesheet> = sequenceOf(
   Timesheet("Grace", 20, 0),
   Timesheet("Linus", 14, 2),
 )
+
+/**
+ * A type of our own that no `column` overload of Part 2 accepts: the invoice
+ * reference, `ADA-2026-09-01`, which a user adds an overload for.
+ */
+@JvmInline
+value class CustomType(private val reference: String) {
+  fun toColumnText(): String = reference
+}
+
+val Invoice.custom: CustomType
+  get() = CustomType("${customer.uppercase()}-$issuedOn")

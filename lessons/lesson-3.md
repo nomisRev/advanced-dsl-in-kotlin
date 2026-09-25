@@ -20,6 +20,7 @@ kodee: wave
 
 ```kotlin
 import presentation.support.typed.generateExcel
+import presentation.support.typed.column
 
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
@@ -41,8 +42,8 @@ magic-move
 
 <DrawnAnnotation text="hours * rate" label="`hours` & `rate` are `Column<Number>`, not an `Int`" on="0" :geometry="{ label: { x: 0.7082, y: 0.4433 }, connector: { type: 'quadratic', start: { x: 0.3950, y: 0.4240 }, control: { x: 0.4231, y: 0.4535 }, end: { x: 0.4793, y: 0.4467 } } }"/>
 
-```kotlin
-import presentation.support.typed.generateExcel
+```kotlin no-compile
+import presentation.support.referenced.generateExcel
 
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
@@ -74,7 +75,7 @@ magic-move
 <DrawnAnnotation text="&quot;Total&quot;" label="Redundant redefinition of column name" on="1" :geometry="{ label: { x: 0.5912, y: 0.4466 }, connector: { type: 'quadratic', start: { x: 0.3437, y: 0.4195 }, control: { x: 0.3569, y: 0.4647 }, end: { x: 0.4002, y: 0.4468 } } }"/>
 
 ```kotlin
-import presentation.support.typed.generateExcel
+import presentation.support.referenced.generateExcel
 
 generateExcel("invoices.xlsx", invoices) {
   column("Customer") { it.customer }
@@ -118,7 +119,8 @@ magic-move
 # Columns become values we can reference
 
 ```kotlin
-import presentation.support.delegated.generateExcel
+import presentation.support.delegated.SheetBuilder
+import presentation.support.writeWorkbook
 
 data class ExcelConfig(val columnNameStyle: (String) -> String)
 
@@ -131,13 +133,16 @@ inline fun <T> generateExcel(
   rows: Sequence<T>,
   config: ExcelConfig = ExcelConfig.Default,
   block: SheetBuilder<T>.() -> Unit,
-)
+) {
+  val builder = SheetBuilder<T>(config.columnNameStyle).apply(block)
+  writeWorkbook(path, rows, builder)
+}
 
 generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  column("Total") { hours * rate }
+  val total by formula { hours * rate }
 }
 ```
 ```console

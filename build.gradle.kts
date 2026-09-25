@@ -1,5 +1,5 @@
 plugins {
-  id("org.jetbrains.kotlin.jvm") version "2.4.20"
+  id("org.jetbrains.kotlin.jvm") version "2.5.0-Beta1"
 }
 
 repositories {
@@ -7,6 +7,7 @@ repositories {
 }
 
 dependencies {
+  implementation(project(":excel-dsl"))
   implementation("org.apache.poi:poi-ooxml:5.5.1")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }
@@ -17,6 +18,7 @@ kotlin {
     "-Xcollection-literals",
     "-Xcontext-parameters",
     "-Xcompanion-blocks-and-extensions",
+    "-Xcontext-sensitive-resolution",
   )
 }
 

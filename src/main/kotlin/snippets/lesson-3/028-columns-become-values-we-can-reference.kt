@@ -4,7 +4,8 @@
 package snippets.lesson3.slide28
 
 import presentation.support.*
-import presentation.support.delegated.generateExcel
+import presentation.support.delegated.SheetBuilder
+import presentation.support.writeWorkbook
 
 data class ExcelConfig(val columnNameStyle: (String) -> String)
 
@@ -16,13 +17,16 @@ inline fun <T> generateExcel(
   rows: Sequence<T>,
   config: ExcelConfig = ExcelConfig.Default,
   block: SheetBuilder<T>.() -> Unit,
-)
+) {
+  val builder = SheetBuilder<T>(config.columnNameStyle).apply(block)
+  writeWorkbook(path, rows, builder)
+}
 
 suspend fun main() {
   generateExcel("invoices.xlsx", invoices) {
     val customer by column { it.customer }
     val hours by column { it.hours }
     val rate by column { it.rate }
-    column("Total") { hours * rate }
+    val total by formula { hours * rate }
   }
 }

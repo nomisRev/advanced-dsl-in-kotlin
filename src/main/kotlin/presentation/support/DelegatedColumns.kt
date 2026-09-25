@@ -15,9 +15,12 @@ typealias ColumnDelegate<V> =
  * and the column is registered when `by` runs, not when it is read.
  *
  * Each stage adds its own `formula { }`, since the formulas it offers differ.
+ * [header] turns the property name into the header, `ExcelConfig.columnNameStyle`.
  */
 @ExcelDsl
-abstract class DelegatedColumns<T> : SheetColumns<T>() {
+abstract class DelegatedColumns<T>(
+  private val header: (propertyName: String) -> String = { it },
+) : SheetColumns<T>() {
   @OverloadResolutionByLambdaReturnType
   @JvmName("textColumn")
   fun column(value: (T) -> String): ColumnDelegate<String> = register(value)
@@ -40,7 +43,8 @@ abstract class DelegatedColumns<T> : SheetColumns<T>() {
 
   private fun <V> delegate(add: (name: String) -> Int): ColumnDelegate<V> =
     PropertyDelegateProvider { _, property ->
-      val column = Column<V>(property.name, add(property.name))
+      val name = header(property.name)
+      val column = Column<V>(name, add(name))
       ReadOnlyProperty { _, _ -> column }
     }
 }

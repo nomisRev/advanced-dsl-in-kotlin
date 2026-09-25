@@ -19,7 +19,7 @@ abstract class SheetColumns<T> {
   private val headerStyles = mutableListOf<CellStyle.() -> Unit>()
 
   /** Adds a column and returns its index. [value] receives the 1-based Excel row too. */
-  protected fun addColumn(
+  internal fun addColumn(
     header: String,
     bold: Boolean = false,
     value: (row: T, excelRow: Int) -> Any?,
@@ -76,13 +76,9 @@ private inline fun writeWorkbook(
   save: (SXSSFWorkbook) -> Unit,
 ) {
   SXSSFWorkbook(ROW_WINDOW).use { workbook ->
-    try {
-      val styles = Styles(workbook)
-      for (sheet in sheets) workbook.write(sheet, styles)
-      save(workbook)
-    } finally {
-      workbook.dispose()
-    }
+    val styles = Styles(workbook)
+    for (sheet in sheets) workbook.write(sheet, styles)
+    save(workbook)
   }
 }
 

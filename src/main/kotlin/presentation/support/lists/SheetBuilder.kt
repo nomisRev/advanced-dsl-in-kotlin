@@ -30,7 +30,9 @@ class ExcelFormulas(private val row: Int) :
 }
 
 @ExcelDsl
-class SheetBuilder<T> : DelegatedColumns<T>() {
+class SheetBuilder<T>(
+  header: (propertyName: String) -> String = { it },
+) : DelegatedColumns<T>(header) {
   @Deprecated(
     message = "Use a delegated column: val name by column { }",
     level = DeprecationLevel.HIDDEN,
@@ -53,7 +55,11 @@ inline fun <T> generateExcel(
   rows: Sequence<T>,
   config: ExcelConfig = ExcelConfig.Default,
   block: SheetBuilder<T>.() -> Unit,
-) = writeWorkbook(path, rows, SheetBuilder<T>().apply(block))
+) = writeWorkbook(
+  path,
+  rows,
+  SheetBuilder<T>(config.columnNameStyle).apply(block),
+)
 
 /* The timesheet the slides sum with `val subtotal by formula { }`. */
 

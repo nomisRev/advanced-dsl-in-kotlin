@@ -14,24 +14,24 @@ import presentation.support.writeWorkbook
  */
 
 @ExcelDsl
-class SheetBuilder<T> : SheetColumns<T>() {
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("textColumn")
-  fun column(name: String, value: (T) -> String) {
-    addColumn(name) { row, _ -> value(row) }
-  }
+class SheetBuilder<T> : SheetColumns<T>()
 
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("numberColumn")
-  fun column(name: String, value: (T) -> Number) {
-    addColumn(name) { row, _ -> value(row) }
-  }
+@OverloadResolutionByLambdaReturnType
+@JvmName("textColumn")
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String) {
+  addColumn(name) { row, _ -> value(row) }
+}
 
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("dateColumn")
-  fun column(name: String, value: (T) -> LocalDate) {
-    addColumn(name) { row, _ -> value(row) }
-  }
+@OverloadResolutionByLambdaReturnType
+@JvmName("numberColumn")
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number) {
+  addColumn(name) { row, _ -> value(row) }
+}
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("dateColumn")
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate) {
+  addColumn(name) { row, _ -> value(row) }
 }
 
 fun <T> generateExcel(
