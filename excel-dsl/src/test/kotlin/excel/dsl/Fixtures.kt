@@ -78,7 +78,7 @@ fun <T> assertExcelAgrees(sheet: Sheet<T>, rows: List<T>) {
       CellType.BOOLEAN -> value.booleanValue
       CellType.STRING -> value.stringValue
       CellType.ERROR -> FormulaError.forInt(value.errorValue).string
-      else -> null
+      CellType.BLANK, CellType.FORMULA, CellType._NONE, null -> null
     }
   }
   fun expected(value: Any?): Any? = when (value) {

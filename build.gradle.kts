@@ -20,6 +20,7 @@ kotlin {
     "-Xcontext-parameters",
     "-Xcompanion-blocks-and-extensions",
     "-Xcontext-sensitive-resolution",
+    "-Xexplicit-context-arguments",
   )
 }
 

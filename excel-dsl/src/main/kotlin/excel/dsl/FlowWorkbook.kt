@@ -4,18 +4,19 @@ import java.io.OutputStream
 import java.nio.file.OpenOption
 import java.nio.file.Path
 import kotlin.io.path.outputStream
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.withContext
 
 /** Named sheets backed by flows, collected sequentially on each write. */
 class FlowWorkbook internal constructor(private val sheets: List<Entry<*>>) {
   val names: List<String> = sheets.map { it.name }
 
-  /** Streams leaves [output] open. Cancellation closes POI's temporary files. Run on appropriate blocking dispatcher */
+  /**
+   * Streams to [output] and leaves it open. Cancellation closes POI's temporary files.
+   * Runs on the caller's dispatcher; Apache POI blocks, so pick a blocking-friendly one.
+   */
   suspend fun write(output: OutputStream) {
     streamWorkbook(output) {
       for (entry in sheets) {

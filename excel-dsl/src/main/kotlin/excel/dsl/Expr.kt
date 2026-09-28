@@ -93,7 +93,7 @@ internal fun Expr<*>.toExcel(row: Int, data: IntRange? = null): String = when (t
     when (column.kind) {
       ValueKind.Boolean -> "IF($it,TRUE(),FALSE())"
       ValueKind.Text -> "T($it)"
-      else -> it
+      ValueKind.Number, ValueKind.Date, ValueKind.DateTime, ValueKind.Instant -> it
     }
   }
 
@@ -144,14 +144,15 @@ internal fun Expr<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -
   fun numeric(left: Expr<Number>, right: Expr<Number>, apply: (Double, Double) -> Double): Any? =
     pair(left, right) { l, r -> finite(apply(number(l), number(r))) }
   return when (this) {
-    is Expr.Ref -> cell(column).let { value ->
-      when {
-        value is ExcelError -> value
-        column.kind == ValueKind.Boolean -> value ?: false
-        column.kind == ValueKind.Text -> value ?: ""
-        value is Number -> finite(value.toDouble())
-        else -> value ?: 0.0
+    is Expr.Ref -> when (val value = cell(column)) {
+      is ExcelError -> value
+      is Number -> finite(value.toDouble())
+      null -> when (column.kind) {
+        ValueKind.Boolean -> false
+        ValueKind.Text -> ""
+        ValueKind.Number, ValueKind.Date, ValueKind.DateTime, ValueKind.Instant -> 0.0
       }
+      else -> value
     }
 
     is Expr.Range -> error("A range must be an aggregate operand: $column")
@@ -174,18 +175,20 @@ internal fun Expr<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -
         when (term) {
           is Expr.Range -> summary.merge(range(term.column))
           is Expr.Ref -> summary.add(cell(term.column))
-          else -> summary.add(term.eval(), direct = true)
+          is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
+          is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not, is Expr.Aggregate, is Expr.Round, is Expr.If ->
+            summary.add(term.eval(), direct = true)
         }
       }
     }.result(function)
 
-    is Expr.Round ->
-      when (val evaluated = value.eval() as? ExcelError) {
-        null if digits > 308 -> number(evaluated)
-        null if digits < -308 -> 0.0
-        null -> finite(number(evaluated).toBigDecimal().setScale(digits, RoundingMode.HALF_UP).toDouble())
-        else -> evaluated
-      }
+    is Expr.Round -> when (val evaluated = value.eval()) {
+      is ExcelError -> evaluated
+      // Excel's useful precision is far below these bounds; avoid huge BigDecimals.
+      else if digits > 308 -> number(evaluated)
+      else if digits < -308 -> 0.0
+      else -> finite(number(evaluated).toBigDecimal().setScale(digits, RoundingMode.HALF_UP).toDouble())
+    }
 
     is Expr.If -> when (val evaluated = condition.eval()) {
       is ExcelError -> evaluated
@@ -209,10 +212,18 @@ internal class RangeSummary {
     if (value is ExcelError) {
       if (error == null) error = value; return
     }
-    val n = when {
-      value is Number -> value.toDouble()
-      direct && value is Boolean -> if (value) 1.0 else 0.0
-      direct && value is String -> value.toDoubleOrNull() ?: run { error = ExcelError.Value; return }
+    val n = when (value) {
+      is Number -> value.toDouble()
+      is Boolean if direct -> if (value) 1.0 else 0.0
+      is String if direct -> {
+        val double = value.toDoubleOrNull()
+        if (double == null) {
+          error = ExcelError.Value
+          return
+        } else {
+          double
+        }
+      }
       else -> return
     }
     if (!n.isFinite()) {
@@ -233,16 +244,16 @@ internal class RangeSummary {
     if (error == null) error = other.error
   }
 
-  fun result(function: AggregateFunction): Any = when {
-    function == AggregateFunction.CountNonBlank -> count.toDouble()
-    function == AggregateFunction.Count -> numericCount.toDouble()
-    error != null -> error!!
-    else -> when (function) {
+  fun result(function: AggregateFunction): Any {
+    val failure = error
+    return when (function) {
+      AggregateFunction.CountNonBlank -> count.toDouble()
+      AggregateFunction.Count -> numericCount.toDouble()
+      else if failure != null -> failure
       AggregateFunction.Sum -> finite(sum)
       AggregateFunction.Average -> if (numericCount == 0L) ExcelError.DivisionByZero else finite(sum / numericCount)
       AggregateFunction.Min -> if (numericCount == 0L) 0.0 else min
       AggregateFunction.Max -> if (numericCount == 0L) 0.0 else max
-      AggregateFunction.Count, AggregateFunction.CountNonBlank -> error("handled above")
     }
   }
 }
@@ -267,7 +278,10 @@ internal fun Expr<*>.references(): List<Expr<*>> =
 
 internal val Expr<*>.referencedColumn: Column<*>?
   get() = when (this) {
-    is Expr.Ref -> column; is Expr.Range -> column; else -> null
+    is Expr.Ref -> column
+    is Expr.Range -> column
+    is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
+    is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not, is Expr.Aggregate, is Expr.Round, is Expr.If -> null
   }
 
 internal val Expr<*>.kind: ValueKind
@@ -276,18 +290,19 @@ internal val Expr<*>.kind: ValueKind
     is Expr.Text -> ValueKind.Text
     is Expr.Bool, is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not -> ValueKind.Boolean
     is Expr.If -> then.kind
-    else -> ValueKind.Number
+    is Expr.Range, is Expr.Constant, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
+    is Expr.Aggregate, is Expr.Round -> ValueKind.Number
   }
 
 private fun finite(value: Double): Any = if (value.isFinite()) value else ExcelError.Number
 private fun number(value: Any?): Double = (value as? Number)?.toDouble() ?: 0.0
-private fun compare(left: Any?, right: Any?): Int = when {
-  left is String && right is String -> left.compareTo(right, ignoreCase = true)
-  left is Boolean && right is Boolean -> left.compareTo(right)
-  left is Boolean -> 1
-  right is Boolean -> -1
-  left is String -> 1
-  right is String -> -1
+private fun compare(left: Any?, right: Any?): Int = when (left) {
+  is String if right is String -> left.compareTo(right, ignoreCase = true)
+  is Boolean if right is Boolean -> left.compareTo(right)
+  is Boolean -> 1
+  else if right is Boolean -> -1
+  is String -> 1
+  else if right is String -> -1
   else -> if (number(left) == number(right)) 0 else number(left).compareTo(number(right))
 }
 
@@ -302,7 +317,11 @@ private fun Comparison.test(order: Int): Boolean = when (this) {
 
 private val Expr<*>.precedence: Int
   get() = when (this) {
-    is Expr.Compare -> 0; is Expr.Plus, is Expr.Minus -> 1; is Expr.Times, is Expr.Div -> 2; else -> 3
+    is Expr.Compare -> 0
+    is Expr.Plus, is Expr.Minus -> 1
+    is Expr.Times, is Expr.Div -> 2
+    is Expr.Ref, is Expr.Range, is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.And, is Expr.Or, is Expr.Not,
+    is Expr.Aggregate, is Expr.Round, is Expr.If -> 3
   }
 
 private fun Expr<*>.binary(op: String, left: Expr<*>, right: Expr<*>, row: Int, data: IntRange?): String {

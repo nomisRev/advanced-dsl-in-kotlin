@@ -32,3 +32,19 @@ src: ./lessons/extra-sheets-as-values.md
 ---
 src: ./lessons/extra-flow.md
 ---
+
+---
+src: ./lessons/extra-dsl-mechanics.md
+---
+
+---
+src: ./lessons/extra-gaps.md
+---
+
+---
+src: ./lessons/extra-ordered-state.md
+---
+
+---
+src: ./lessons/extra-still-missing.md
+---

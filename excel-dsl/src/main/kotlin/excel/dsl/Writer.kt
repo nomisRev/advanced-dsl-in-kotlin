@@ -164,6 +164,7 @@ internal fun validateCell(value: Any?, header: String, excelRow: Int?) {
   when (value) {
     is Number -> if (value.toExcelDouble() == null) fail(value.unsupported())
     is String -> if (value.length > MAX_TEXT) fail("text longer than Excel's $MAX_TEXT characters")
+    else -> Unit
   }
 }
 

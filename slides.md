@@ -76,5 +76,11 @@ src: ./lessons/extra-tricks.md
 ---
 src: ./lessons/extra-realistic-library.md
 ---
+---
+src: ./lessons/extra-dsl-mechanics.md
+---
+---
+src: ./lessons/extra-gaps.md
+---
 
 <!-- End of imported slides. -->

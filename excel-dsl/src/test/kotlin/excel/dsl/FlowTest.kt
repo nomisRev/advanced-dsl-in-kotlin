@@ -2,12 +2,14 @@ package excel.dsl
 
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
+import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.io.TempDir
 
 class FlowTest {
@@ -52,16 +55,22 @@ class FlowTest {
   }
 
   @Test
-  fun `rows are collected and written on Dispatchers IO`() = runBlocking {
+  fun `rows are collected and written on the caller's dispatcher`() = runBlocking {
     val threads = mutableSetOf<String>()
     val sheet = sheet<Invoice> {
       val customer by column { threads += Thread.currentThread().name; it.customer }
     }
-    sheet.write(ByteArrayOutputStream(), flow {
-      threads += Thread.currentThread().name
-      emit(invoices[0])
-    })
-    assertTrue(threads.all { it.startsWith("DefaultDispatcher-worker") }, threads.toString())
+    val executor = Executors.newSingleThreadExecutor { Thread(it, "excel-writer") }
+    executor.asCoroutineDispatcher().use { dispatcher ->
+      withContext(dispatcher) {
+        sheet.write(ByteArrayOutputStream(), flow {
+          threads += Thread.currentThread().name
+          emit(invoices[0])
+        })
+      }
+    }
+    // Coroutine debug mode appends " @coroutine#N" to the thread name.
+    assertEquals(setOf("excel-writer"), threads.map { it.substringBefore(" @") }.toSet())
   }
 
   @Test

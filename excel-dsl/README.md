@@ -103,8 +103,10 @@ val report = flowWorkbook {
 report.write(outputStream) // suspend
 ```
 
-Flow workbooks collect sheets sequentially on `Dispatchers.IO`, with backpressure and
-cancellation checks between rows. POI temporary files close on success, failure and
+Flow workbooks collect sheets sequentially on the caller's dispatcher, with backpressure and
+cancellation checks between rows. Apache POI blocks, so wrap `write` in
+`withContext(Dispatchers.IO)` or another blocking-friendly dispatcher of your choice; the
+library never switches dispatchers itself. POI temporary files close on success, failure and
 cancellation. The final ZIP write is blocking. Caller-provided streams stay open. Sources
 are consumed on every write; reuse requires replayable sources.
 
