@@ -2,41 +2,76 @@ package excel.dsl
 
 /** Operations shared by row formulas and totals. */
 @ExcelDsl
-sealed interface Arithmetic {
-  fun round(value: Expr<Number>, digits: Int = 0): Expr<Double> = Expr.Round(value, digits)
-  fun literal(value: Number): Expr<Double> = constant(value)
-  fun literal(value: String): Expr<String> = Expr.Text(value)
-  fun literal(value: Boolean): Expr<Boolean> = Expr.Bool(value)
-}
+sealed interface Arithmetic
 
 /** Row formulas may reference columns from their sheet. */
 @ExcelDsl
-sealed interface Formulas : Arithmetic {
-  fun sum(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Sum, columns)
-  fun average(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Average, columns)
-  fun min(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Min, columns)
-  fun max(columns: List<Column<Number>>): Expr<Double> = aggregate(AggregateFunction.Max, columns)
-  fun round(column: Column<Number>, digits: Int = 0): Expr<Double> = Expr.Round(Expr.Ref(column), digits)
-  private fun aggregate(function: AggregateFunction, columns: List<Column<Number>>): Expr<Double> =
-    Expr.Aggregate(function, columns.map { Expr.Ref(it) })
-}
+sealed interface Formulas : Arithmetic
 
 /** Totals may aggregate whole columns, but cannot reference a single row. */
 @ExcelDsl
-sealed interface Totals : Arithmetic {
-  fun sum(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Sum, column)
-  fun average(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Average, column)
-  fun min(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Min, column)
-  fun max(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Max, column)
-  /** COUNT counts numeric cells, excluding blanks and errors. */
-  fun count(column: Column<Number>): Expr<Double> = aggregate(AggregateFunction.Count, column)
-  /** COUNTA counts non-blank cells, including text, booleans and errors. */
-  fun countNonBlank(column: Column<*>): Expr<Double> = aggregate(AggregateFunction.CountNonBlank, column)
-  private fun aggregate(function: AggregateFunction, column: Column<*>): Expr<Double> =
-    Expr.Aggregate(function, listOf(Expr.Range(column)))
-}
+sealed interface Totals : Arithmetic
+
 internal object FormulaScope : Formulas
 internal object TotalsScope : Totals
+
+context(_: Arithmetic)
+fun round(value: Expr<Number>, digits: Int = 0): Expr<Double> = Expr.Round(value, digits)
+
+context(_: Arithmetic)
+fun literal(value: Number): Expr<Double> = constant(value)
+
+context(_: Arithmetic)
+fun literal(value: String): Expr<String> = Expr.Text(value)
+
+context(_: Arithmetic)
+fun literal(value: Boolean): Expr<Boolean> = Expr.Bool(value)
+
+context(_: Formulas)
+fun sum(columns: List<Column<Number>>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Sum, columns.map { Expr.Ref(it) })
+
+context(_: Formulas)
+fun average(columns: List<Column<Number>>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Average, columns.map { Expr.Ref(it) })
+
+context(_: Formulas)
+fun min(columns: List<Column<Number>>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Min, columns.map { Expr.Ref(it) })
+
+context(_: Formulas)
+fun max(columns: List<Column<Number>>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Max, columns.map { Expr.Ref(it) })
+
+context(_: Formulas)
+fun round(column: Column<Number>, digits: Int = 0): Expr<Double> =
+  Expr.Round(Expr.Ref(column), digits)
+
+context(_: Totals)
+fun sum(column: Column<Number>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Sum, listOf(Expr.Range(column)))
+
+context(_: Totals)
+fun average(column: Column<Number>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Average, listOf(Expr.Range(column)))
+
+context(_: Totals)
+fun min(column: Column<Number>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Min, listOf(Expr.Range(column)))
+
+context(_: Totals)
+fun max(column: Column<Number>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Max, listOf(Expr.Range(column)))
+
+/** COUNT counts numeric cells, excluding blanks and errors. */
+context(_: Totals)
+fun count(column: Column<Number>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.Count, listOf(Expr.Range(column)))
+
+/** COUNTA counts non-blank cells, including text, booleans and errors. */
+context(_: Totals)
+fun countNonBlank(column: Column<*>): Expr<Double> =
+  Expr.Aggregate(AggregateFunction.CountNonBlank, listOf(Expr.Range(column)))
 
 /** Explicit reference for an alias formula: `formula { amount.ref() }`. */
 context(_: Formulas)

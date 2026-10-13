@@ -122,9 +122,9 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   fun <V> formula(
     format: CellFormat? = null,
     width: Int? = null,
-    block: Formulas.() -> Expr<V>,
+    block: context(Formulas) () -> Expr<V>,
   ): ColumnDelegate<V> {
-    val expr = FormulaScope.block()
+    val expr = block(FormulaScope)
     checkOwned(expr)
     require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
     return delegate { header -> add(header, format, width, expr.kind) { ColumnSpec.Formula(it, expr) } }
@@ -136,9 +136,9 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
     name: String,
     format: CellFormat? = null,
     width: Int? = null,
-    block: Formulas.() -> Expr<V>,
+    block: context(Formulas) () -> Expr<V>,
   ): Column<V> {
-    val expr = FormulaScope.block()
+    val expr = block(FormulaScope)
     checkOwned(expr)
     require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
     return add(name, format, width, expr.kind) { ColumnSpec.Formula(it, expr) }
@@ -327,16 +327,16 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
 
     /** Numeric totals return numbers, text totals text, and Boolean totals booleans. */
     @JvmName("numberTotal")
-    fun Column<Number>.total(block: Totals.() -> Expr<Number>): Unit = formulaTotal(this, block)
+    fun Column<Number>.total(block: context(Totals) () -> Expr<Number>): Unit = formulaTotal(this, block)
 
     @JvmName("textTotal")
-    fun Column<String>.total(block: Totals.() -> Expr<String>): Unit = formulaTotal(this, block)
+    fun Column<String>.total(block: context(Totals) () -> Expr<String>): Unit = formulaTotal(this, block)
 
     @JvmName("booleanTotal")
-    fun Column<Boolean>.total(block: Totals.() -> Expr<Boolean>): Unit = formulaTotal(this, block)
+    fun Column<Boolean>.total(block: context(Totals) () -> Expr<Boolean>): Unit = formulaTotal(this, block)
 
-    private fun formulaTotal(column: Column<*>, block: Totals.() -> Expr<*>) {
-      val expr = TotalsScope.block()
+    private fun formulaTotal(column: Column<*>, block: context(Totals) () -> Expr<*>) {
+      val expr = block(TotalsScope)
       this@SheetBuilder.checkOwned(expr)
       require(expr.references().none { it is Expr.Ref }) { "A total cannot reference a single row: $expr" }
       put(column, TotalSpec.Formula(expr))

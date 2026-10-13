@@ -69,7 +69,7 @@ leaves the cell empty. Dates and date-times get a format by default, so Excel sh
 <DrawnAnnotation text="formula" :line="5" :on="0" :wait="false" label="The same shape for a formula" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.7768, y: 0.6567 } }"/>
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text='formula("Invoice total") {' receiver="Formulas">
+<TypeHint :line="5" text='formula("Invoice total") {' context="Formulas">
 
 ```kotlin
 import excel.dsl.*
@@ -300,7 +300,7 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="formula(euro)" label="Formulas take the same options" />
 
 <TypeHint :line="3" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" text="formula(euro) {" receiver="Formulas">
+<TypeHint :line="7" text="formula(euro) {" context="Formulas">
 
 ```kotlin
 import excel.dsl.*
@@ -393,7 +393,7 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="eq" :line="7" label="Six of them, one per Excel operator"  :geometry="{ label: { x: 0.7470, y: 0.6143 }, connector: { type: 'quadratic', start: { x: 0.4494, y: 0.6163 }, control: { x: 0.5107, y: 0.6420 }, end: { x: 0.5721, y: 0.6163 } } }"/>
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="formula {" receiver="Formulas">
+<TypeHint :line="5" text="formula {" context="Formulas">
 
 ```kotlin
 import excel.dsl.*
@@ -448,7 +448,7 @@ an operator. Comparisons return `Expr<Boolean>`. Arithmetic requires the explici
 <DrawnAnnotation text="otherwise" label="Only `otherwise` finishes the `IF`" color="var(--fundamentals-blue)" />
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="formula {" receiver="Formulas">
+<TypeHint :line="5" text="formula {" context="Formulas">
 
 ```kotlin
 import excel.dsl.*
@@ -516,7 +516,7 @@ Excel would fill with FALSE.
 <DrawnAnnotation text="average" label="`AVERAGE`, `MIN` and `MAX` take a `List` like `sum`" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.4878, y: 0.7703 } }"/>
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" receiver="Formulas">
+<TypeHint :line="4" text="formula {" context="Formulas">
 
 ```kotlin
 import excel.dsl.*
@@ -592,7 +592,7 @@ magic-move
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
 <TypeHint :line="7" text="totals {" receiver="SheetBuilder<Invoice>.TotalsBuilder">
-<TypeHint :line="10" text="total {" receiver="Totals">
+<TypeHint :line="10" text="total {" context="Totals">
 
 ```kotlin
 import excel.dsl.*
@@ -660,13 +660,13 @@ explicit when a count is placed under a text or Boolean data column.
 
 ```kotlin no-compile
 @JvmName("numberTotal")
-fun Column<Number>.total(block: Totals.() -> Expr<Number>)
+fun Column<Number>.total(block: context(Totals) () -> Expr<Number>)
 
 @JvmName("textTotal")
-fun Column<String>.total(block: Totals.() -> Expr<String>)
+fun Column<String>.total(block: context(Totals) () -> Expr<String>)
 
 @JvmName("booleanTotal")
-fun Column<Boolean>.total(block: Totals.() -> Expr<Boolean>)
+fun Column<Boolean>.total(block: context(Totals) () -> Expr<Boolean>)
 ```
 
 <!--
@@ -803,7 +803,7 @@ Excel would, and check it against `evaluate` and `totals`.
 # An Excel formula stores its result too
 
 <TypeHint :line="1" receiver="SheetBuilder<Int>">
-<TypeHint :line="3" text='formula("Double") {' receiver="Formulas">
+<TypeHint :line="3" text='formula("Double") {' context="Formulas">
 
 ```kotlin
 import excel.dsl.*

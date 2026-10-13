@@ -103,7 +103,8 @@ class FormulaLimitsTest {
     assertExcelAgrees(schema, listOf(text))
   }
 
-  private fun Formulas.aggregate(function: String, columns: List<Column<Number>>): Expr<Double> = when (function) {
+  context(_: Formulas)
+  private fun aggregate(function: String, columns: List<Column<Number>>): Expr<Double> = when (function) {
     "SUM" -> sum(columns)
     "AVERAGE" -> average(columns)
     "MIN" -> min(columns)

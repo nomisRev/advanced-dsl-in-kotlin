@@ -52,13 +52,13 @@ src: ./lessons/lesson-1.md
 src: ./lessons/lesson-2.md
 ---
 ---
+src: ./lessons/lesson-3.md
+---
+---
 src: ./lessons/lesson-4.md
 ---
 ---
 src: ./lessons/lesson-4.5.md
----
----
-src: ./lessons/lesson-5.md
 ---
 ---
 src: ./lessons/lesson-6.md

@@ -25,8 +25,8 @@ class FormulasTest {
   private val rb = Expr.Ref(b)
   private val two = Expr.Constant(2.0)
 
-  private fun <V> formula(block: Formulas.() -> Expr<V>): Expr<V> = FormulaScope.block()
-  private fun <V> total(block: Totals.() -> Expr<V>): Expr<V> = TotalsScope.block()
+  private fun <V> formula(block: context(Formulas) () -> Expr<V>): Expr<V> = block(FormulaScope)
+  private fun <V> total(block: context(Totals) () -> Expr<V>): Expr<V> = block(TotalsScope)
 
   @Test
   fun `every operand pairing builds the same node`() {
