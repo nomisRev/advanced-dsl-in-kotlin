@@ -18,12 +18,17 @@ class CompileSafetyTest {
 
   private fun compile(name: String, body: String): Pair<ExitCode, String> {
     val source = dir.resolve("$name.kt")
-    source.writeText("""
-      import excel.dsl.*
-      fun example() {
-        $body
-      }
-    """.trimIndent())
+    val content = if (body.trimStart().startsWith("@file:") || body.trimStart().startsWith("package ")) {
+      body.trimIndent()
+    } else {
+      """
+        import excel.dsl.*
+        fun example() {
+          $body
+        }
+      """.trimIndent()
+    }
+    source.writeText(content)
     val diagnostics = ByteArrayOutputStream()
     val exit = PrintStream(diagnostics).use { output ->
       K2JVMCompiler().exec(
@@ -182,6 +187,47 @@ class CompileSafetyTest {
         }
       }
       println(schema.headers)
+    """)
+    assertEquals(ExitCode.OK, exit, message)
+  }
+
+  @Test
+  fun `custom type column extension with context parameter compiles`() {
+    val (exit, message) = compile("CustomTypeContext", """
+      @file:OptIn(kotlin.experimental.ExperimentalTypeInference::class)
+      package app
+
+      class MyNumber(val value: Double)
+
+      class Builder<T>
+
+      @OverloadResolutionByLambdaReturnType
+      @JvmName("stringColumn")
+      context(builder: Builder<T>)
+      fun <T> column(value: (T) -> String): String = "String"
+
+      @OverloadResolutionByLambdaReturnType
+      @JvmName("numberColumn")
+      context(builder: Builder<T>)
+      fun <T> column(value: (T) -> Number): String = "Number"
+
+      // Downstream / user overload:
+      @OverloadResolutionByLambdaReturnType
+      @JvmName("myNumberColumn")
+      context(builder: Builder<T>)
+      fun <T> column(value: (T) -> MyNumber): String = "MyNumber"
+
+      data class Item(val name: String, val amount: Double, val custom: MyNumber)
+
+      fun <T> build(block: context(Builder<T>) () -> Unit) {}
+
+      fun test() {
+        build<Item> {
+          val name = column { it.name }
+          val amount = column { it.amount }
+          val custom = column { it.custom }
+        }
+      }
     """)
     assertEquals(ExitCode.OK, exit, message)
   }

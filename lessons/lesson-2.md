@@ -257,12 +257,6 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 
-<!--
-Only the name changes. The extension converts our own value class to a supported
-cell type, and the library's existing overloads continue to work. With member
-overloads, member priority is another reason to give the extension its own name.
--->
-
 ---
 magic-move
 ---
@@ -276,11 +270,8 @@ import presentation.support.typed.SheetBuilder
 import presentation.support.typed.generateExcel
 import presentation.support.typed.column
 
-import presentation.support.typed.workbook
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) { invoice() }
-  sheet("Q2", q2) { invoice() }
+generateExcel("invoices.xlsx", invoices) {
+  invoice()
 }
 
 fun SheetBuilder<Invoice>.invoice() {

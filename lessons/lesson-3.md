@@ -153,6 +153,7 @@ magic-move
 
 ```kotlin
 import presentation.support.contexts.generateExcel
+import presentation.support.contexts.column
 import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 
@@ -181,6 +182,7 @@ magic-move
 
 ```kotlin
 import presentation.support.contexts.generateExcel
+import presentation.support.contexts.column
 import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 import presentation.support.contexts.Formulas
@@ -213,6 +215,7 @@ magic-move
 
 ```kotlin
 import presentation.support.contexts.generateExcel
+import presentation.support.contexts.column
 import presentation.support.contexts.withVat
 import presentation.support.contexts.contextOf
 import presentation.support.contexts.Formulas
@@ -230,6 +233,68 @@ generateExcel("invoices.xlsx", invoices) {
 </TypeHint>
 </TypeHint>
 </TypeHint>
+
+---
+
+# Users want their own column types too
+
+<DrawnAnnotation text="context(builder: SheetBuilder<T>)" label="Requires the sheet builder in context" />
+<DrawnAnnotation text="fun <T> column" label="Same function name as the library" color="var(--fundamentals-blue)" />
+
+```kotlin
+@file:OptIn(ExperimentalTypeInference::class)
+
+import kotlin.experimental.ExperimentalTypeInference
+import presentation.support.CustomType
+import presentation.support.ColumnDelegate
+import presentation.support.contexts.SheetBuilder
+import presentation.support.contexts.column
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("customColumn")
+context(builder: SheetBuilder<T>)
+fun <T> column(value: (T) -> CustomType): ColumnDelegate<String> =
+  column { value(it).toColumnText() }
+```
+
+<!--
+In Part 2, adding a custom type overload forced us to give it another name (`cellColumn`)
+because member overloads take priority and extension receivers clash.
+With context parameters, `column` is defined as a context function rather than a member.
+Downstream code can declare a `column` overload for custom types without collision.
+-->
+
+---
+
+# Context overloads resolve without renaming
+
+<DrawnAnnotation text="{ it.custom }" label="`CustomType`, picks the custom overload" :geometry="{ label: { x: 0.63, y: 0.44 } }" />
+
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+
+```kotlin
+import presentation.support.contexts.*
+import presentation.support.custom
+
+generateExcel("invoices.xlsx", invoices) {
+  val customer by column { it.customer }
+  val hours by column { it.hours }
+  val custom by column { it.custom }
+}
+```
+```console
+| customer | hours | custom          |
+| Ada      | 12    | ADA-2026-09-01  |
+```
+
+</TypeHint>
+
+<!--
+Both library and downstream overloads exist in the same candidate space.
+The compiler uses `@OverloadResolutionByLambdaReturnType` to inspect the return
+type of `{ it.custom }`, finds `CustomType`, and selects our custom overload—no
+renaming or import aliases required.
+-->
 
 ---
 

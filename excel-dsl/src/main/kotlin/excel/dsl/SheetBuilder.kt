@@ -52,7 +52,7 @@ class ExcelConfig(
  * and a width in characters, fitted to the header otherwise.
  */
 @ExcelDsl
-class SheetBuilder<T> @PublishedApi internal constructor(private val config: ExcelConfig) {
+class SheetBuilder<T> @PublishedApi internal constructor(internal val config: ExcelConfig) {
   private val columns = mutableListOf<ColumnSpec<T>>()
   private val totals = mutableMapOf<Column<*>, TotalSpec>()
 
@@ -61,59 +61,6 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
 
   /** Adds Excel's filter buttons to the header, over the data rows. */
   var autoFilter: Boolean = false
-
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("textColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> String?): ColumnDelegate<String> =
-    delegate { data(it, format, width, ValueKind.Text, value) }
-
-  /** Written as a double, which Excel stores with 15 significant digits. */
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("numberColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): ColumnDelegate<Number> =
-    delegate { data(it, format, width, ValueKind.Number, value) }
-
-  /** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("decimalColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigDecimal?): ColumnDelegate<BigDecimal> =
-    delegate { data(it, format, width, ValueKind.Number, value) }
-
-  /** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("bigIntegerColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigInteger?): ColumnDelegate<BigInteger> =
-    delegate { data(it, format, width, ValueKind.Number, value) }
-
-  /** Written as the constant's [Enum.name]. */
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("enumColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Enum<*>?): ColumnDelegate<String> =
-    delegate { data(it, format, width, ValueKind.Text) { row -> value(row)?.name } }
-
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("booleanColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Boolean?): ColumnDelegate<Boolean> =
-    delegate { data(it, format, width, ValueKind.Boolean, value) }
-
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("dateColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> LocalDate?): ColumnDelegate<LocalDate> =
-    delegate { data(it, format, width, ValueKind.Date, value) }
-
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("dateTimeColumn")
-  fun column(
-    format: CellFormat? = null,
-    width: Int? = null,
-    value: (T) -> LocalDateTime?,
-  ): ColumnDelegate<LocalDateTime> = delegate { data(it, format, width, ValueKind.DateTime, value) }
-
-  /** Shown as a date and time in [ExcelConfig.zone]. */
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("instantColumn")
-  fun column(format: CellFormat? = null, width: Int? = null, value: (T) -> Instant?): ColumnDelegate<Instant> =
-    delegate { data(it, format, width, ValueKind.Instant, value) }
 
   /**
    * A column Excel computes. [block] runs once, here, and builds an [Expr]
@@ -375,7 +322,7 @@ class SheetBuilder<T> @PublishedApi internal constructor(private val config: Exc
   private fun <V> data(header: String, format: CellFormat?, width: Int?, kind: ValueKind, value: (T) -> V?): Column<V> =
     add(header, format, width, kind) { ColumnSpec.Data(it, value) }
 
-  private fun <V> add(
+  internal fun <V> add(
     header: String,
     format: CellFormat?,
     width: Int?,
@@ -420,6 +367,80 @@ internal sealed interface ColumnSpec<in T> {
   class Data<T>(override val layout: Layout, val value: (T) -> Any?) : ColumnSpec<T>
   class Formula(override val layout: Layout, val expr: Expr<*>) : ColumnSpec<Any?>
 }
+
+context(sheet: SheetBuilder<T>)
+fun <T, V> delegate(add: (header: String) -> Column<V>): ColumnDelegate<V> =
+  PropertyDelegateProvider { _, property ->
+    val column = add(sheet.config.columnNameStyle(property.name))
+    ReadOnlyProperty { _, _ -> column }
+  }
+
+context(sheet: SheetBuilder<T>)
+private fun <T, V> data(header: String, format: CellFormat?, width: Int?, kind: ValueKind, value: (T) -> V?): Column<V> =
+  sheet.add(header, format, width, kind) { ColumnSpec.Data(it, value) }
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("textColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> String?): ColumnDelegate<String> =
+  delegate { data(it, format, width, ValueKind.Text, value) }
+
+/** Written as a double, which Excel stores with 15 significant digits. */
+@OverloadResolutionByLambdaReturnType
+@JvmName("numberColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> Number?): ColumnDelegate<Number> =
+  delegate { data(it, format, width, ValueKind.Number, value) }
+
+/** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
+@OverloadResolutionByLambdaReturnType
+@JvmName("decimalColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigDecimal?): ColumnDelegate<BigDecimal> =
+  delegate { data(it, format, width, ValueKind.Number, value) }
+
+/** Checked against Excel's numeric limits; use text to preserve arbitrary precision. */
+@OverloadResolutionByLambdaReturnType
+@JvmName("bigIntegerColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> BigInteger?): ColumnDelegate<BigInteger> =
+  delegate { data(it, format, width, ValueKind.Number, value) }
+
+/** Written as the constant's [Enum.name]. */
+@OverloadResolutionByLambdaReturnType
+@JvmName("enumColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> Enum<*>?): ColumnDelegate<String> =
+  delegate { data(it, format, width, ValueKind.Text) { row -> value(row)?.name } }
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("booleanColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> Boolean?): ColumnDelegate<Boolean> =
+  delegate { data(it, format, width, ValueKind.Boolean, value) }
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("dateColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> LocalDate?): ColumnDelegate<LocalDate> =
+  delegate { data(it, format, width, ValueKind.Date, value) }
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("dateTimeColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(
+  format: CellFormat? = null,
+  width: Int? = null,
+  value: (T) -> LocalDateTime?,
+): ColumnDelegate<LocalDateTime> = delegate { data(it, format, width, ValueKind.DateTime, value) }
+
+/** Shown as a date and time in [ExcelConfig.zone]. */
+@OverloadResolutionByLambdaReturnType
+@JvmName("instantColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> Instant?): ColumnDelegate<Instant> =
+  delegate { data(it, format, width, ValueKind.Instant, value) }
+
 
 internal sealed interface TotalSpec {
   class Label(val text: String) : TotalSpec
