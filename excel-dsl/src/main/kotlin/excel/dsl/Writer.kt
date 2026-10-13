@@ -3,9 +3,11 @@ package excel.dsl
 import java.io.OutputStream
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.time.DateTimeException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.FormulaError
 import org.apache.poi.ss.usermodel.CellStyle
@@ -15,7 +17,7 @@ import org.apache.poi.xssf.streaming.SXSSFSheet
 import org.apache.poi.xssf.streaming.SXSSFWorkbook
 
 /*
- * The only file that knows Apache POI. SXSSF keeps the last ROW_WINDOW rows in
+ * The streaming Apache POI adapter. SXSSF keeps the last ROW_WINDOW rows in
  * memory and flushes the rest to temp files, which `close` deletes.
  */
 
@@ -156,7 +158,7 @@ private fun Cell.setFormulaResult(value: Any?) {
 }
 
 /** Shared by evaluation and writing; preserves the caller's typed data value. */
-internal fun validateCell(value: Any?, header: String, excelRow: Int?) {
+internal fun validateCell(value: Any?, header: String, excelRow: Int?, zone: ZoneId) {
   fun fail(reason: String): Nothing {
     val location = if (excelRow == null) header else "$header, row $excelRow"
     throw IllegalArgumentException("$location: $reason")
@@ -164,9 +166,26 @@ internal fun validateCell(value: Any?, header: String, excelRow: Int?) {
   when (value) {
     is Number -> if (value.toExcelDouble() == null) fail(value.unsupported())
     is String -> if (value.length > MAX_TEXT) fail("text longer than Excel's $MAX_TEXT characters")
+    is LocalDate -> if (!value.isExcelDate()) fail("$value is outside Excel's date range $MIN_DATE through $MAX_DATE")
+    is LocalDateTime -> if (!value.toLocalDate().isExcelDate()) {
+      fail("$value is outside Excel's date range $MIN_DATE through $MAX_DATE")
+    }
+    is Instant -> {
+      val date = try {
+        LocalDateTime.ofInstant(value, zone).toLocalDate()
+      } catch (_: DateTimeException) {
+        fail("$value in $zone is outside Excel's date range $MIN_DATE through $MAX_DATE")
+      }
+      if (!date.isExcelDate()) fail("$value in $zone is outside Excel's date range $MIN_DATE through $MAX_DATE")
+    }
     else -> Unit
   }
 }
+
+private val MIN_DATE = LocalDate.of(1900, 1, 1)
+private val MAX_DATE = LocalDate.of(9999, 12, 31)
+
+private fun LocalDate.isExcelDate(): Boolean = this in MIN_DATE..MAX_DATE
 
 /** The column's own format, or the default of the value's type. */
 private fun ColumnSpec<*>.format(value: Any): CellFormat? =
@@ -181,21 +200,21 @@ private fun ColumnSpec<*>.width(): Int =
   layout.width ?: maxOf(column.name.length + 2, if (layout.format == CellFormat.DateTime) 20 else 10)
     .coerceAtMost(MAX_WIDTH)
 
-/** `null` when Excel cannot hold the number without losing digits. */
+/** `null` when Excel cannot hold the number without losing digits or underflowing. */
 internal fun Number.toExcelDouble(): Double? = when (this) {
-  is Double -> takeIf { it.isFinite() }
-  is Float -> toDouble().takeIf { it.isFinite() }
-  is BigDecimal -> takeIf { it.fits() }?.toDouble()?.takeIf { it.isFinite() && (it != 0.0 || signum() == 0) }
-  is BigInteger -> takeIf { it.toBigDecimal().fits() }?.toDouble()?.takeIf { it.isFinite() }
+  is Double -> takeIf { it.isExcelNumber() }
+  is Float -> toDouble().takeIf { it.isExcelNumber() }
+  is BigDecimal -> takeIf { it.fits() }?.toDouble()?.takeIf { it.isExcelNumber() && (it != 0.0 || signum() == 0) }
+  is BigInteger -> takeIf { it.toBigDecimal().fits() }?.toDouble()?.takeIf { it.isExcelNumber() }
   is Long -> takeIf { it.toBigDecimal().fits() }?.toDouble()
-  else -> toDouble().takeIf { it.isFinite() }
+  else -> toDouble().takeIf { it.isExcelNumber() }
 }
 
 private fun BigDecimal.fits(): Boolean = signum() == 0 || stripTrailingZeros().precision() <= MAX_DIGITS
 
 private fun Number.unsupported(): String =
   if (this is Double || this is Float) "$this has no Excel equivalent"
-  else if (!toDouble().isFinite() || (this is BigDecimal && signum() != 0 && toDouble() == 0.0))
+  else if (!toDouble().isExcelNumber() || (this is BigDecimal && signum() != 0 && toDouble() == 0.0))
     "$this is outside the supported numeric range; write it as text"
   else "$this has more than $MAX_DIGITS significant digits, which Excel cannot store; write it as text"
 

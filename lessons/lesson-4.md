@@ -16,6 +16,85 @@ kodee: wave
 
 # The total is a number, not a formula
 
+<DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, the sheet never recalculates" color="red"  :geometry="{ label: { x: 0.7015, y: 0.4439 }, connector: { type: 'quadratic', start: { x: 0.3755, y: 0.4214 }, control: { x: 0.4046, y: 0.4528 }, end: { x: 0.4576, y: 0.4443 } } }"/>
+
+```kotlin
+import presentation.support.typed.generateExcel
+import presentation.support.typed.column
+
+generateExcel("invoices.xlsx", invoices) {
+  column("Customer") { it.customer }
+  column("Hours") { it.hours }
+  column("Rate") { it.rate }
+  column("Total") { it.hours * it.rate }
+}
+```
+```console
+| Customer | Hours | Rate | Total |
+| Ada      | 12    | 90   | 1080  |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<DrawnAnnotation text="hours * rate" label="`hours` & `rate` are `Column<Number>`, not an `Int`" on="0" :geometry="{ label: { x: 0.7082, y: 0.4433 }, connector: { type: 'quadratic', start: { x: 0.3950, y: 0.4240 }, control: { x: 0.4231, y: 0.4535 }, end: { x: 0.4793, y: 0.4467 } } }"/>
+
+```kotlin no-compile
+import presentation.support.referenced.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  column("Customer") { it.customer }
+  val hours = column("Hours") { it.hours }
+  val rate = column("Rate") { it.rate }
+  column("Total") { hours * rate }
+}
+```
+```console
+| Customer | Hours | Rate | Total |
+| Ada      | 12    | 90   | 1080  |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<DrawnAnnotation text="formula" on="0" />
+<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.7029, y: 0.4449 }, connector: { type: 'quadratic', start: { x: 0.4963, y: 0.4232 }, control: { x: 0.5375, y: 0.4573 }, end: { x: 0.5858, y: 0.4483 } } }"/>
+<DrawnAnnotation text="=B2*C2" />
+
+<DrawnAnnotation text="hours" on="1" />
+<DrawnAnnotation text="&quot;Hours&quot;" on="1" />
+<DrawnAnnotation text="rate" on="1" occurrence="2" />
+<DrawnAnnotation text="&quot;Rate&quot;" />
+<DrawnAnnotation text="total" on="1" />
+<DrawnAnnotation text="&quot;Total&quot;" label="Redundant redefinition of column name" on="1" :geometry="{ label: { x: 0.6013, y: 0.4441 }, connector: { type: 'quadratic', start: { x: 0.3437, y: 0.4195 }, control: { x: 0.3569, y: 0.4647 }, end: { x: 0.4002, y: 0.4468 } } }"/>
+
+```kotlin
+import presentation.support.referenced.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  column("Customer") { it.customer }
+  val hours = column("Hours") { it.hours }
+  val rate = column("Rate") { it.rate }
+  val total = formula("Total") { hours * rate }
+}
+```
+```console
+| Customer | Hours | Rate | Total |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
 <DrawnAnnotation text="formula" on="0" />
 <DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.6171, y: 0.4457 }, connector: { type: 'quadratic', start: { x: 0.4056, y: 0.4244 }, control: { x: 0.4468, y: 0.4585 }, end: { x: 0.4951, y: 0.4495 } } }"/>
 
@@ -41,7 +120,7 @@ generateExcel("invoices.xlsx", invoices) {
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
 <TypeHint :line="4" text="formula {" receiver="Formulas">
-<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`" style="--inline-compiler-error-message-size: 1.4rem">
+<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver `Column<Number>`" style="--inline-compiler-error-message-size: 1.53rem">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -66,14 +145,17 @@ generateExcel("invoices.xlsx", invoices) {
 # An extension declared inside an interface
 
 ```kotlin no-compile
+typealias FormulaBuilder =
+  PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<Number>>>
+
+//Example
 interface Formulas {
   operator fun Column<Number>.times(other: Column<Number>): Cell
 }
 
 @ExcelDsl
 class SheetBuilder<T> {
-  fun formula(block: Formulas.() -> Cell):
-    PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<Number>>>
+  fun formula(block: Formulas.() -> Cell): FormulaDelegate
 }
 ```
 
@@ -204,3 +286,8 @@ generateExcel("invoices.xlsx", invoices) {
 but the receiver type is still checked at compile time: `times` is only declared on
 `Column<Number>`.
 -->
+
+---
+
+#  Explain double receiver problem!
+

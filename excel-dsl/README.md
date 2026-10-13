@@ -34,6 +34,11 @@ number, text or Boolean formulas. Text comparisons ignore case. Boolean and text
 normalize blank source cells to `false` and `""`, respectively. Date columns remain data
 columns; formula references support number, text and Boolean columns.
 
+Text literals inside formulas are limited to 255 characters, including comparison values
+and conditional branches. Row aggregates (`sum`, `average`, `min`, `max`) accept at most
+255 column arguments. These limits are checked while building the schema. Text data cells
+and text-column references can still contain up to 32,767 characters.
+
 Named columns register immediately: `column("Customer") { it.customer }`, just like
 `formula("Total") { hours * rate }`. The string shorthand `"Customer" { it.customer }`
 is equivalent. Their handles may be ignored. Unnamed `column` and `formula` return
@@ -51,12 +56,21 @@ in a numeric cell. Use a string column for exact digits, or explicitly round the
 passing it to a numeric column. Formats change appearance, not numeric precision.
 Unsupported `Long`, `BigInteger` and `BigDecimal` values fail before silently losing digits.
 `Double` and `Float` inputs already carry floating-point rounding; they must be finite.
+Nonzero numeric inputs and literals below the smallest normal double (approximately
+`2.2250738585072014E-308` in magnitude) are rejected because Excel does not support
+subnormal numbers. Formula results that underflow this boundary become zero.
+
+Dates and date-times must fall between `1900-01-01` and `9999-12-31`, inclusive.
+An `Instant` is checked after conversion to `ExcelConfig.zone`. Evaluation and writing
+reject unsupported dates with the column name; writing also includes the row number.
 
 ## Evaluation
 
 `sheet.evaluate(row)` returns a map keyed by header. Data columns preserve their values and
 blanks. Formula errors appear as `ExcelError`, including errors in comparisons, logical
 operations, aggregates and conditions. `IF` evaluates only its selected branch.
+Numeric comparisons follow Excel's comparison rules, so a formula such as
+`(literal(0.1) + 0.2) eq 0.3` evaluates to `true` despite binary floating-point rounding.
 
 For typed lookup, retain a column handle:
 

@@ -10,7 +10,8 @@
     "snippets": "slidev-kotlin-snippets && slidev-kotlin-snippets extras.md && slidev-kotlin-snippets lesson-0.md",
     "snippets:check": "slidev-kotlin-snippets --check && slidev-kotlin-snippets extras.md --check && slidev-kotlin-snippets lesson-0.md --check",
     "lesson-0": "slidev lesson-0.md",
-    "extras": "slidev extras.md"
+    "extras": "slidev extras.md",
+    "old-slides": "slidev old-slides.md"
   },
   "dependencies": {
     "@slidev/cli": "52.19.1",

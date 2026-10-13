@@ -42,9 +42,5 @@ src: ./lessons/extra-gaps.md
 ---
 
 ---
-src: ./lessons/extra-ordered-state.md
----
-
----
 src: ./lessons/extra-still-missing.md
 ---

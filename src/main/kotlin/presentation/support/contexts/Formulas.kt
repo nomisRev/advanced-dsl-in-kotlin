@@ -25,6 +25,9 @@ operator fun Column<Number>.times(factor: Double): Cell =
 context(formulas: Formulas)
 fun Column<Number>.withVat(): Cell = this * 1.21
 
+context(c: C)
+fun <C> contextOf(): C = c
+
 class ExcelFormulas(private val row: Int) : Formulas {
   override fun multiply(column: Column<Number>, other: Column<Number>): Cell =
     Cell.Formula("=${column.reference(row)}*${other.reference(row)}")

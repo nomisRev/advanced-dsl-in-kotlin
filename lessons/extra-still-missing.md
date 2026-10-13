@@ -100,55 +100,6 @@ wins over a star import.
 
 ---
 
-# A more specific receiver wins before the lambda
-
-> Part 2, replacing “Users add a cell type with an extension”
-
-<DrawnAnnotation text="column(&quot;Customer&quot;)" label="Resolves to the user's `SheetBuilder<Invoice>.column`, not the library's" color="red" />
-<DrawnAnnotation text="column(&quot;custom&quot;)" label="The only call it was written for" />
-<InlineCompilerError :line="2" text="{ it.customer }" message="Return type mismatch: expected 'CustomType', actual 'String'.">
-<InlineCompilerError :line="3" text="{ it.hours }" message="Return type mismatch: expected 'CustomType', actual 'Int'.">
-
-```kotlin
-import presentation.support.typed.column
-import presentation.support.typed.generateExcel
-import invoices.custom.column
-
-generateExcel("invoices.xlsx", invoices) {
-  column("Customer") { it.customer }
-  column("Hours") { it.hours }
-  column("custom") { it.custom }
-}
-```
-
-</InlineCompilerError>
-</InlineCompilerError>
-
-<!--
-The Part 2 slide declares `fun SheetBuilder<Invoice>.column(name: String,
-block: (Invoice) -> CustomType)` and shows it next to the library's three
-overloads. That does not compile, in any arrangement (2.5.0-Beta1):
-
-- Declared in another file and imported explicitly, as here: `SheetBuilder<Invoice>`
-  is more specific than `SheetBuilder<T>`, so the user's overload wins every
-  `column` call before any lambda is analysed, and the other three columns fail
-  with the errors above. `@OverloadResolutionByLambdaReturnType` on the user's
-  function changes nothing: it only breaks ties between equally specific
-  candidates.
-- Declared in the same file as the calls, with the library's `column`
-  imported: explicit imports outrank the file's package (row 3 of the table),
-  so the user's overload is never a candidate and `column("custom") { it.custom }`
-  is an "Overload resolution ambiguity" between the three library overloads.
-- Against member overloads: the realistic library's "A member overload beats a
-  user's extension", the same ambiguity.
-
-The fix is the realistic library's next slide: an extension under its own name,
-`money { it.price }`. The Part 2 slide would be right as "An extension adds a
-type under its own name".
--->
-
----
-
 # `@JvmSynthetic` hides an overload from Java
 
 > Part 2, after “`@JvmName` gives each overload its own name”

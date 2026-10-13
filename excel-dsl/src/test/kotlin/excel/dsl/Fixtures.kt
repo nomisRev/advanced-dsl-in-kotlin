@@ -63,45 +63,68 @@ fun sxssfTempFiles(): Set<String> =
     .toSet()
 
 /**
- * Writes [rows], lets Apache POI's formula engine compute every cell as
- * Excel would, and asserts it matches [Sheet.evaluate] and [Sheet.totals].
+ * Writes [rows], checks stored values and formula caches, then lets Apache POI's
+ * formula engine recalculate every cell. Both must match [Sheet.evaluate] and [Sheet.totals].
  * Only for sheets of numbers, booleans and text.
  */
 fun <T> assertExcelAgrees(sheet: Sheet<T>, rows: List<T>) {
-  val workbook = ByteArrayOutputStream().also { sheet.write(it, rows.asSequence()) }.toByteArray().read()
-  val excel = workbook.creationHelper.createFormulaEvaluator()
-  val poi = workbook.getSheetAt(0)
-  fun computed(cell: Cell?): Any? {
-    val value = cell?.let(excel::evaluate) ?: return null
-    return when (value.cellType) {
-      CellType.NUMERIC -> value.numberValue
-      CellType.BOOLEAN -> value.booleanValue
-      CellType.STRING -> value.stringValue
-      CellType.ERROR -> FormulaError.forInt(value.errorValue).string
-      CellType.BLANK, CellType.FORMULA, CellType._NONE, null -> null
+  ByteArrayOutputStream().also { sheet.write(it, rows.asSequence()) }.toByteArray().read().use { workbook ->
+    val excel = workbook.creationHelper.createFormulaEvaluator()
+    val poi = workbook.getSheetAt(0)
+    fun computed(cell: Cell?): Any? {
+      val value = cell?.let(excel::evaluate) ?: return null
+      return when (value.cellType) {
+        CellType.NUMERIC -> value.numberValue
+        CellType.BOOLEAN -> value.booleanValue
+        CellType.STRING -> value.stringValue
+        CellType.ERROR -> FormulaError.forInt(value.errorValue).string
+        CellType.BLANK, CellType.FORMULA, CellType._NONE, null -> null
+      }
     }
-  }
-  fun expected(value: Any?): Any? = when (value) {
-    is ExcelError -> value.text
-    is Double -> if (value.isFinite()) value else ExcelError.Number.text
-    is Number -> value.toDouble()
-    else -> value
-  }
-  rows.forEachIndexed { index, row ->
-    val cells = poi.getRow(index + 1)
-    assertEquals(
-      sheet.evaluate(row).mapValues { expected(it.value) },
-      sheet.headers.withIndex().associate { [column, header] -> header to computed(cells.getCell(column)) },
-      "row ${index + 2}",
-    )
-  }
-  val totals = sheet.totals(rows.asSequence())
-  if (totals.isNotEmpty()) {
-    val cells = poi.getRow(rows.size + 1)
-    assertEquals(
-      totals.mapValues { expected(it.value) },
-      totals.keys.associateWith { computed(cells.getCell(sheet.headers.indexOf(it))) },
-      "totals",
-    )
+    fun expected(value: Any?): Any? = when (value) {
+      is ExcelError -> value.text
+      is Double -> if (value.isFinite()) value else ExcelError.Number.text
+      is Number -> value.toDouble()
+      else -> value
+    }
+    fun stored(cell: Cell?): Any? {
+      if (cell == null) return null
+      val type = if (cell.cellType == CellType.FORMULA) cell.cachedFormulaResultType else cell.cellType
+      return when (type) {
+        CellType.NUMERIC -> cell.numericCellValue
+        CellType.BOOLEAN -> cell.booleanCellValue
+        CellType.STRING -> cell.stringCellValue
+        CellType.ERROR -> FormulaError.forInt(cell.errorCellValue).string
+        CellType.BLANK, CellType.FORMULA, CellType._NONE, null -> null
+      }
+    }
+    rows.forEachIndexed { index, row ->
+      val cells = poi.getRow(index + 1)
+      val evaluated = sheet.evaluate(row).mapValues { expected(it.value) }
+      assertEquals(
+        evaluated,
+        sheet.headers.withIndex().associate { [column, header] -> header to stored(cells.getCell(column)) },
+        "stored row ${index + 2}",
+      )
+      assertEquals(
+        evaluated,
+        sheet.headers.withIndex().associate { [column, header] -> header to computed(cells.getCell(column)) },
+        "row ${index + 2}",
+      )
+    }
+    val totals = sheet.totals(rows.asSequence())
+    if (totals.isNotEmpty()) {
+      val cells = poi.getRow(rows.size + 1)
+      assertEquals(
+        totals.mapValues { expected(it.value) },
+        totals.keys.associateWith { stored(cells.getCell(sheet.headers.indexOf(it))) },
+        "stored totals",
+      )
+      assertEquals(
+        totals.mapValues { expected(it.value) },
+        totals.keys.associateWith { computed(cells.getCell(sheet.headers.indexOf(it))) },
+        "totals",
+      )
+    }
   }
 }

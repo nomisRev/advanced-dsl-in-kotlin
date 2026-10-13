@@ -5,7 +5,7 @@
     <file type="web" url="file://$PROJECT_DIR$" />
   </component>
   <component name="KubernetesApiPersistence">{}</component>
-  <component name="KubernetesApiProvider"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider">{}</component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_21" project-jdk-name="jbr-25" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>

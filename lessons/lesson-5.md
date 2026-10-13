@@ -17,7 +17,7 @@ kodee: wave
 # Users want their own formulas
 
 <DrawnAnnotation text="fun Formulas.withVat" on="0" label="`Formulas` has to be the receiver"  :geometry="{ label: { x: 0.4343, y: 0.3709 }, connector: { type: 'quadratic', start: { x: 0.2766, y: 0.4535 }, control: { x: 0.2739, y: 0.4083 }, end: { x: 0.2817, y: 0.3850 } } }"/>
-<DrawnAnnotation text="withVat(total)" on="1" label="Reads backwards, we want `total.withVat()`" color="red" />
+<DrawnAnnotation text="withVat(total)" on="1" label="Reads backwards; goal: `total.withVat()`" color="red" />
 
 ```kotlin
 import presentation.support.delegated.Formulas
@@ -93,11 +93,11 @@ val gross by formula { total.withVat() }
 
 # Declare the operators with a context
 
-<DrawnAnnotation text="fun multiply" label="The interface keeps plain functions" />
-<DrawnAnnotation text="formulas.multiply(this, factor)" label="Still dynamic dispatch, through the context" color="var(--fundamentals-pink)" />
-<DrawnAnnotation text="this * 1.21" label="Resolves, `formulas` is in context" />
+<DrawnAnnotation text="fun multiply" label="The interface keeps plain functions" on="0" :geometry="{ label: { x: 0.2626, y: 0.3667 }, connector: { type: 'quadratic', start: { x: 0.1111, y: 0.2750 }, control: { x: 0.1135, y: 0.3090 }, end: { x: 0.1111, y: 0.3439 } } }"/>
+<DrawnAnnotation text="formulas.multiply(this, factor)" label="Still dynamic dispatch, through the context" on="1" :geometry="{ label: { x: 0.6711, y: 0.5520 }, connector: { type: 'quadratic', start: { x: 0.4266, y: 0.5487 }, control: { x: 0.4423, y: 0.5557 }, end: { x: 0.4579, y: 0.5487 } } }"/>
+<DrawnAnnotation text="*" label="Resolves, `formulas` is in context" on="2" />
 
-```kotlin
+```kotlin{1-4|6-8|10-11}
 interface Formulas {
   fun multiply(column: Column<Number>, other: Column<Number>): Cell
   fun multiply(column: Column<Number>, factor: Double): Cell
@@ -107,7 +107,7 @@ context(formulas: Formulas)
 operator fun Column<Number>.times(factor: Double): Cell =
   formulas.multiply(this, factor)
 
-context(formulas: Formulas)
+context(_: Formulas)
 fun Column<Number>.withVat(): Cell = this * 1.21
 ```
 
@@ -115,9 +115,12 @@ fun Column<Number>.withVat(): Cell = this * 1.21
 
 # A receiver satisfies a context
 
-<DrawnAnnotation text="total.withVat()" label="`this: Formulas` fills `context(formulas: Formulas)`"  :geometry="{ label: { x: 0.6918, y: 0.4437 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4200 }, control: { x: 0.4031, y: 0.4583 }, end: { x: 0.4413, y: 0.4445 } } }"/>
+<DrawnAnnotation text="*" />
+<DrawnAnnotation text="withVat()" label="`this: Formulas` satisfies `context(formulas: Formulas)`"  :geometry="{ label: { x: 0.7478, y: 0.5376, width: 0.3037 }, connector: { type: 'quadratic', start: { x: 0.5954, y: 0.4182 }, control: { x: 0.6334, y: 0.4493 }, end: { x: 0.6429, y: 0.4925 } } }"/>
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" text="formula {" receiver="Formulas">
+<TypeHint :line="5" text="formula {" receiver="Formulas">
 
 ```kotlin
 import presentation.support.contexts.*
@@ -135,7 +138,160 @@ generateExcel("invoices.xlsx", invoices) {
 ```
 
 </TypeHint>
+</TypeHint>
+</TypeHint>
 
+---
+magic-move
+---
+
+# A context lambda brings only the context
+
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" text="formula {" context="Formulas">
+<TypeHint :line="5" text="formula {" context="Formulas">
+
+```kotlin
+import presentation.support.contexts.generateExcel
+import presentation.support.contexts.times
+import presentation.support.contexts.withVat
+
+generateExcel("invoices.xlsx", invoices) {
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val total by formula { hours * rate }
+  val gross by formula { total.withVat() }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+---
+magic-move
+---
+
+# A context lambda brings only the context
+
+<InlineCompilerError :line="5" text="multiply" message="Unresolved reference `multiply`">
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" text="formula {" context="Formulas">
+<TypeHint :line="7" text="formula {" context="Formulas">
+
+```kotlin
+import presentation.support.contexts.generateExcel
+import presentation.support.contexts.times
+import presentation.support.contexts.withVat
+import presentation.support.contexts.Formulas
+
+generateExcel("invoices.xlsx", invoices) {
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val total by formula {
+    multiply(hours, rate)
+  }
+  val gross by formula { total.withVat() }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+</InlineCompilerError>
+
+---
+magic-move
+---
+
+# A context lambda brings only the context
+
+<DrawnAnnotation text="contextOf" label="Explicitly calling is always allowed"  :geometry="{ label: { x: 0.3438, y: 0.6038 } }"/>
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" text="formula {" context="Formulas">
+<TypeHint :line="7" text="formula {" context="Formulas">
+
+```kotlin
+import presentation.support.contexts.generateExcel
+import presentation.support.contexts.withVat
+import presentation.support.contexts.contextOf
+import presentation.support.contexts.Formulas
+
+generateExcel("invoices.xlsx", invoices) {
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val total by formula {
+    contextOf<Formulas>().multiply(hours, rate)
+  }
+  val gross by formula { total.withVat() }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+---
+
+# `@DslMarker` closes contexts too (Example..)
+
+<DrawnAnnotation text="context(builder: WorkbookBuilder)" label="Satisfied by the marked `workbook { }` receiver"  :geometry="{ label: { x: 0.5439, y: 0.2599 }, connector: { type: 'quadratic', start: { x: 0.2883, y: 0.2271 }, control: { x: 0.2950, y: 0.2514 }, end: { x: 0.3114, y: 0.2586 } } }"/>
+<DrawnAnnotation text="stamp()" :line="5" label="The closest marked scope is the workbook" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.3993, y: 0.3850 }, connector: { type: 'quadratic', start: { x: 0.1583, y: 0.3878 }, control: { x: 0.1732, y: 0.3942 }, end: { x: 0.1880, y: 0.3872 } } }"/>
+
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="6" receiver="SheetBuilder<Invoice>">
+<InlineCompilerError :line="8" text="stamp" message="'context(_: WorkbookBuilder) fun stamp(): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.">
+
+```kotlin
+import presentation.support.marked.WorkbookBuilder
+import presentation.support.marked.workbook
+
+context(builder: WorkbookBuilder)
+fun stamp() {}
+
+workbook("invoices.xlsx") {
+  stamp()
+  sheet("Q1", q1) {
+    
+    stamp()
+  }
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+
+---
+
+# `@DslMarker` closes contexts too (Example..)
+
+> Kotlin 2.4.0: `-Xexplicit-context-arguments`
+
+<DrawnAnnotation text="builder = this@workbook" label="Explicitly specifying is always allowed"/>
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="6" receiver="SheetBuilder<Invoice>">
+
+```kotlin
+import presentation.support.marked.WorkbookBuilder
+import presentation.support.marked.workbook
+
+context(builder: WorkbookBuilder)
+fun stamp() {}
+
+workbook("invoices.xlsx") {
+  stamp()
+  sheet("Q1", q1) {
+    stamp(builder = this@workbook)
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+---
+class: versus-slide
 ---
 
 # Context parameter or receiver?
@@ -147,8 +303,6 @@ generateExcel("invoices.xlsx", invoices) {
 | At the call site | `total.withVat()` | resolved from scope |
 | Reads as | the subject of the sentence | the ambient environment |
 
-> The receiver is what the sentence is about,
+> Is the code about it? Make it a <span class="versus-receiver">receiver</span>.
 > 
-> the context is where it is said.
->
-> `serranofp.com/blog/context-params.html`
+> Does it only need it? Make it a <span class="versus-context">context</span>.

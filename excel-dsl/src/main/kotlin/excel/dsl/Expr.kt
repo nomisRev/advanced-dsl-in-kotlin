@@ -3,6 +3,9 @@ package excel.dsl
 import java.math.RoundingMode
 import java.util.Collections
 
+private const val MAX_FORMULA_TEXT_LENGTH = 255
+private const val MAX_FUNCTION_ARGUMENTS = 255
+
 /** A typed formula tree, built once and rendered for each row. */
 sealed class Expr<out V> private constructor() {
   @ConsistentCopyVisibility
@@ -12,11 +15,17 @@ sealed class Expr<out V> private constructor() {
   internal data class Range(val column: Column<*>) : Expr<Nothing>()
   internal data class Constant(val value: Double) : Expr<Double>() {
     init {
-      require(value.isFinite()) { "Excel has no literal for $value" }
+      require(value.isExcelNumber()) { "Excel has no literal for $value" }
     }
   }
 
-  internal data class Text(val value: String) : Expr<String>()
+  internal data class Text(val value: String) : Expr<String>() {
+    init {
+      require(value.length <= MAX_FORMULA_TEXT_LENGTH) {
+        "Excel formula text literals hold at most $MAX_FORMULA_TEXT_LENGTH characters; got ${value.length}"
+      }
+    }
+  }
   internal data class Bool(val value: Boolean) : Expr<Boolean>()
   internal data class Plus(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
   internal data class Minus(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
@@ -37,6 +46,9 @@ sealed class Expr<out V> private constructor() {
 
     init {
       require(this.terms.isNotEmpty()) { "${function.excel} needs at least one term" }
+      require(this.terms.size <= MAX_FUNCTION_ARGUMENTS) {
+        "${function.excel} accepts at most $MAX_FUNCTION_ARGUMENTS arguments; got ${this.terms.size}"
+      }
     }
 
     override fun equals(other: Any?): Boolean = other is Aggregate && function == other.function && terms == other.terms
@@ -230,7 +242,7 @@ internal class RangeSummary {
       error = ExcelError.Number; return
     }
     numericCount++
-    sum += n
+    sum = (sum + n).flushUnderflow()
     min = minOf(min, n)
     max = maxOf(max, n)
   }
@@ -238,7 +250,7 @@ internal class RangeSummary {
   fun merge(other: RangeSummary) {
     count += other.count
     numericCount += other.numericCount
-    sum += other.sum
+    sum = (sum + other.sum).flushUnderflow()
     min = minOf(min, other.min)
     max = maxOf(max, other.max)
     if (error == null) error = other.error
@@ -294,7 +306,7 @@ internal val Expr<*>.kind: ValueKind
     is Expr.Aggregate, is Expr.Round -> ValueKind.Number
   }
 
-private fun finite(value: Double): Any = if (value.isFinite()) value else ExcelError.Number
+private fun finite(value: Double): Any = if (value.isFinite()) value.flushUnderflow() else ExcelError.Number
 private fun number(value: Any?): Double = (value as? Number)?.toDouble() ?: 0.0
 private fun compare(left: Any?, right: Any?): Int = when (left) {
   is String if right is String -> left.compareTo(right, ignoreCase = true)
@@ -303,7 +315,7 @@ private fun compare(left: Any?, right: Any?): Int = when (left) {
   else if right is Boolean -> -1
   is String -> 1
   else if right is String -> -1
-  else -> if (number(left) == number(right)) 0 else number(left).compareTo(number(right))
+  else -> compareExcelNumbers(number(left), number(right))
 }
 
 private fun Comparison.test(order: Int): Boolean = when (this) {

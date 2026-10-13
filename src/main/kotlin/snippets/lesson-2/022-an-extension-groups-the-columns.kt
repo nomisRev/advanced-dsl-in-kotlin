@@ -7,15 +7,17 @@ import presentation.support.*
 import presentation.support.typed.SheetBuilder
 import presentation.support.typed.generateExcel
 import presentation.support.typed.column
+import presentation.support.leaky.workbook
 
-fun SheetBuilder<Invoice>.invoice() {
+fun presentation.support.leaky.SheetBuilder<Invoice>.invoice() {
   column("Customer") { it.customer }
   column("Hours") { it.hours }
   column("Issued") { it.issuedOn }
 }
 
 suspend fun main() {
-  generateExcel("invoices.xlsx", invoices) {
-    invoice()
+  workbook("invoices.xlsx") {
+    sheet("Q1", q1) { invoice() }
+    sheet("Q2", q2) { invoice() }
   }
 }

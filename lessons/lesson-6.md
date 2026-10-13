@@ -161,7 +161,7 @@ class SheetBuilder<T> {
 # New formulas extend the interface
 
 <DrawnAnnotation text="interface Formulas : Multiply" label="Part 5's operators stay, `sum` joins them" :connect="false" :geometry="{ label: { x: 0.60, y: 0.33 } }" />
-<DrawnAnnotation text="Multiply by ExcelMultiply(row)" label="Delegation: the Part 5 interpreter, unchanged" color="var(--fundamentals-blue)" :connect="false" :geometry="{ label: { x: 0.65, y: 0.62 } }" />
+<DrawnAnnotation text="Multiply by ExcelMultiply(row)" label="Delegation: the Part 5 interpreter, unchanged" color="var(--fundamentals-blue)" :connect="false" :geometry="{ label: { x: 0.6633, y: 0.6156 } }" />
 
 ```kotlin show-imports
 import presentation.support.contexts.ExcelFormulas as ExcelMultiply
@@ -354,7 +354,7 @@ so every intermediate result needs its own column.
 
 # Operators build a tree
 
-<DrawnAnnotation text="sealed interface Expr" label="The formula as data, not text" />
+<DrawnAnnotation text="sealed interface Expr" label="The formula as data, not text"  :geometry="{ label: { x: 0.6083, y: 0.1995 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2187 }, control: { x: 0.3780, y: 0.2364 }, end: { x: 0.4634, y: 0.1993 } } }"/>
 <DrawnAnnotation text="context(_: Formulas)" :line="7" label="`_`: nothing reads it, it only gates the call to `formula { }`" :connect="false" :geometry="{ label: { x: 0.585, y: 0.478 } }" />
 <DrawnAnnotation text="Expr.Times(this, Expr.Constant(factor))" label="An `Expr` composes with the next operator" color="var(--fundamentals-pink)" />
 
@@ -380,8 +380,7 @@ operator fun Expr.times(factor: Double): Expr =
 
 # Rendering is a `when` over the tree
 
-<DrawnAnnotation text="when (this)" label="Exhaustive, the tree is sealed" />
-<DrawnAnnotation text="fun Expr.toExcel" label="`evaluate` is just another `when`" color="var(--fundamentals-pink)" />
+<DrawnAnnotation text="when (this)" label="Exhaustive, the tree is sealed"  :geometry="{ label: { x: 0.7996, y: 0.2483 }, connector: { type: 'quadratic', start: { x: 0.5951, y: 0.2204 }, control: { x: 0.6192, y: 0.2450 }, end: { x: 0.6498, y: 0.2484 } } }"/>
 
 ```kotlin
 import presentation.support.expressions.Expr
@@ -398,7 +397,7 @@ fun Expr.toExcel(row: Int): String = when (this) {
 
 # Built once, rendered per row
 
-<DrawnAnnotation text="formula { hours * rate * 1.21 }" label="Runs once, at the `by`" />
+<DrawnAnnotation text="formula { hours * rate * 1.21 }" label="Runs once, at the `by`"  :geometry="{ label: { x: 0.6406, y: 0.4430 }, connector: { type: 'quadratic', start: { x: 0.4716, y: 0.4248 }, control: { x: 0.4864, y: 0.4497 }, end: { x: 0.5289, y: 0.4466 } } }"/>
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
 <TypeHint :line="5" receiver="Formulas">
@@ -428,16 +427,103 @@ Now the tree is built once when the column is registered, and each row only rend
 -->
 
 ---
-layout: intro
-class: section-slide
+
+# A sheet is a value
+
+<DrawnAnnotation text="sheet<Invoice>" />
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="5" receiver="Formulas">
+
+```kotlin
+import excel.dsl.sheet
+import excel.dsl.times
+
+val invoiceSheet = sheet<Invoice> {
+  val customer by column { it.customer }
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val gross by formula { hours * rate * 1.21 }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+<!--
+Same columns and expression tree, now returned as a Sheet<Invoice>. There is no
+file or row source at construction. Invoice must be explicit because the rows
+no longer provide the type argument. This uses the finished excel.dsl library,
+which snapshots the builder and keeps the expression trees from the previous slides.
+-->
+
+---
+
+# One schema writes many reports
+
+<DrawnAnnotation text="invoiceSheet.write" :line="1" />
+
+```kotlin
+import excel.dsl.write
+import kotlin.io.path.Path
+import presentation.support.finished.invoiceSheet
+
+invoiceSheet.write(Path("q1.xlsx"), q1)
+invoiceSheet.write(Path("q2.xlsx"), q2)
+```
+
+<!--
+The schema is reused; each write pulls its own rows. The writer also accepts an
+OutputStream for an HTTP response or an in-memory destination. Reusing the schema
+does not make a one-shot row source repeatable. No file is opened until write.
+-->
+
+---
+
+# The schema is testable without a file
+
+<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="5" receiver="Formulas">
+
+```kotlin
+import excel.dsl.sheet
+import excel.dsl.times
+
+val invoiceSheet = sheet<Invoice> {
+  val customer by column { it.customer }
+  val hours by column { it.hours }
+  val rate by column { it.rate }
+  val gross by formula { hours * rate * 1.21 }
+}
+
+println(invoiceSheet.headers)
+println(invoiceSheet.evaluate(invoices.first())["Gross"])
+```
+```console
+[Customer, Hours, Rate, Gross]
+1306.8
+```
+
+</TypeHint>
+</TypeHint>
+
+<!--
+The same expression tree has two interpreters: Excel text and values. We have
+come back to Part 4's payoff, now behind a reusable schema API. The finished
+library uses the capitalized header policy shown in Part 3. Neither headers
+nor evaluate creates a workbook or touches a file.
+-->
+
+---
+layout: default
+class: recap-slide
 ---
 
 # Recap
 
-- `@DslMarker`: scopes don't leak, also on types you don't own
-- `@OverloadResolutionByLambdaReturnType`: the lambda picks the overload
-- `PropertyDelegateProvider`: name and register at the `by`
-- Member extensions: dynamic dispatch, only where the receiver is in scope
-- `context(...)`: let users extend the DSL
+- `@DslMarker`: constrain receivers and contexts
+- Typed overloads: choose by the lambda's return type
+- Delegates: register at `by`, catch discarded results
+- Member extensions and contexts: scope the operators
+- Sheets as values: build once, render and test
 
 > **A DSL is a set of scopes. Decide what each one can see.**

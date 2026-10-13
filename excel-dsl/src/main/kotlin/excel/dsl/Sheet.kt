@@ -92,7 +92,7 @@ class Sheet<in T> internal constructor(
     for (spec in columns) {
       if (needed != null && spec.column !in needed) continue
       values[spec.column] = when (spec) {
-        is ColumnSpec.Data -> spec.value(row).also { validateCell(it, spec.column.name, excelRow) }
+        is ColumnSpec.Data -> spec.value(row).also { validateCell(it, spec.column.name, excelRow, zone) }
         is ColumnSpec.Formula -> spec.expr.evaluateRaw(cell = values::getValue, range = { error("A row has no range") })
       }
     }

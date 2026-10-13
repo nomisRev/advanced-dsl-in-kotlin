@@ -227,5 +227,48 @@ html.dark .closing-slide::after { background: radial-gradient(circle, rgb(235 85
   .slidev-vclick-target, ::view-transition-old(root), ::view-transition-new(root), ::view-transition-group(root) { transition-duration: 1ms !important; transition-delay: 0ms !important; animation-duration: 1ms !important; }
 }
 
+/* Lesson 5: receiver vs context. Purple is the receiver, pink the context,
+   the same pairing the annotations use; rules instead of a grid. */
+.versus-slide table {
+  width: 100%;
+  margin: 1.4rem 0 1.8rem;
+  border-collapse: collapse;
+  font-size: 1.5rem;
+}
+.versus-slide :is(th, td) {
+  padding: 0.85rem 1.2rem;
+  border: 0;
+  border-bottom: 1px solid rgb(121 84 246 / 18%);
+  background: transparent !important;
+  color: var(--fundamentals-ink);
+  text-align: left;
+  vertical-align: middle;
+}
+.versus-slide th {
+  padding-bottom: 0.6rem;
+  border-bottom: 0.2rem solid var(--fundamentals-purple);
+  font-size: 1.75rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.versus-slide th:first-child { border-bottom-color: transparent; }
+.versus-slide th:nth-child(2) { color: var(--fundamentals-purple); }
+.versus-slide th:nth-child(3) { color: var(--fundamentals-pink); border-bottom-color: var(--fundamentals-pink); }
+.versus-slide td:first-child {
+  width: 22%;
+  padding-left: 0;
+  color: #665f71;
+  font-family: var(--slidev-font-mono);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.versus-slide tr:last-child td { border-bottom: 0; }
+.versus-receiver { color: var(--fundamentals-purple); }
+.versus-context { color: var(--fundamentals-pink); }
+html.dark .versus-slide :is(th, td) { border-bottom-color: rgb(121 84 246 / 30%); }
+html.dark .versus-slide td:first-child { color: #a59db3; }
+
 /* Lesson 4: long real-world examples get a narrower type so the whole snippet fits. */
 .slidev-layout.dense-code { --code-window-columns: 104; }
