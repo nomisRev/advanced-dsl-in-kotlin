@@ -42,13 +42,6 @@ class FormulasTest {
     }
   }
 
-  class C
-  class CScope
-  fun scope(block: CScope.() -> Unit) = CScope().apply(block)
-  val x = scope {
-    C() * C()
-  }
-
   @Test
   fun `every comparison has every operand pairing`() {
     val cases = mapOf(

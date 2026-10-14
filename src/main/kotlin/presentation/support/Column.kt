@@ -1,7 +1,7 @@
 package presentation.support
 
 /** A column of a sheet, returned by `val name by column { }`, holding values of type [V]. */
-class Column<V>(val name: String, val index: Int)
+class Column<out V>(val name: String, val index: Int)
 
 /** The column's letters in a cell reference: `A` to `Z`, then `AA`, `AB`, ... */
 val Column<*>.letter: String

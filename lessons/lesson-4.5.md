@@ -22,6 +22,8 @@ kodee: wave
 <DrawnAnnotation text="&quot;Rate&quot;" />
 
 ```kotlin
+import presentation.support.referenced.workbook
+
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     column("Customer") { it.customer }
@@ -45,7 +47,7 @@ magic-move
 <DrawnAnnotation text="val hours by column" label="The header comes from the property name" on="0" :geometry="{ label: { x: 0.6629, y: 0.2961 }, connector: { type: 'quadratic', start: { x: 0.2941, y: 0.3162 }, control: { x: 0.4298, y: 0.3270 }, end: { x: 0.4520, y: 0.3063 } } }"/>
 
 ```kotlin
-import presentation.support.delegated.generateExcel
+import presentation.support.delegated.workbook
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
@@ -72,8 +74,7 @@ magicMove: true
 # Inject configuration
 
 ```kotlin{3,6}
-import presentation.support.delegated.SheetBuilder
-import presentation.support.writeWorkbook
+import presentation.support.delegated.WorkbookBuilder
 
 data class ExcelConfig(val columnNameStyle: (String) -> String)
 
@@ -81,13 +82,12 @@ companion val ExcelConfig.Default =
   ExcelConfig(columnNameStyle = { it.replaceFirstChar(Char::uppercase) })
 
 // Example
-inline fun <T> workbook(
+inline fun workbook(
   path: String,
-  config: Config = Config(columnNameStyle = { it.replaceFirstChar(Char::uppercase) }),
-  block: SheetBuilder<T>.() -> Unit,
+  config: ExcelConfig = ExcelConfig.Default,
+  block: WorkbookBuilder.() -> Unit,
 ) {
-  val builder = SheetBuilder<T>(config.columnNameStyle).apply(block)
-  writeWorkbook(path, rows, builder)
+  WorkbookBuilder(config.columnNameStyle).apply(block).write(path)
 }
 ```
 ```console

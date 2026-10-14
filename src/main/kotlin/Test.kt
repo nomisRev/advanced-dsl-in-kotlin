@@ -3,7 +3,6 @@ import excel.dsl.Column
 import excel.dsl.ColumnDelegate
 import excel.dsl.SheetBuilder
 import excel.dsl.column
-import org.apache.commons.math3.analysis.function.Exp
 import kotlin.experimental.ExperimentalTypeInference
 
 data class Custom(val raw: String)
@@ -17,7 +16,7 @@ data class Invoice(
 @OverloadResolutionByLambdaReturnType
 @JvmName("textColumn")
 context(_: SheetBuilder<T>)
-fun <T> column(
+fun <T> customColumn(
   format: CellFormat? = null,
   width: Int? = null,
   value: (T) -> Custom
@@ -26,7 +25,7 @@ fun <T> column(
 
 val  x =  excel.dsl.sheet<Invoice> {
   val name by column { it.name }
-  val custom by column { it.custom }
+  val custom by customColumn { it.custom }
 }
 
 sealed interface Expr<out T> {
@@ -58,6 +57,6 @@ val rate: Column<Double> = TODO()
 
 val xx = formula { company contains "ABC" }
 val xxx = formula { ["ABC", "DEF"] contains company }
-val xxxx = formula { [1, 2, 3] contains company }
+// Rejected by OnlyInputTypes: formula { [1, 2, 3] contains company }
 
 

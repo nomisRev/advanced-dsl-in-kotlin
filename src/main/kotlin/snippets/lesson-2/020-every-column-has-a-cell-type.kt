@@ -4,9 +4,8 @@
 package snippets.lesson2.slide20
 
 import presentation.support.*
-import presentation.support.typed.generateExcel
+import presentation.support.typed.workbook
 import presentation.support.typed.column
-import presentation.support.marked.workbook
 
 suspend fun main() {
   workbook("invoices.xlsx") {
