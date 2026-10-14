@@ -799,7 +799,8 @@ sealed interface Expr {
 
 # Formulas build a tree
 
-<DrawnAnnotation text="context(_: FormulaScope)" :line="9" label="`_:` nothing reads it, it requires `formula { }` to call it" :geometry="{ label: { x: 0.6267, y: 0.5485 }, connector: { type: 'quadratic', start: { x: 0.3250, y: 0.5993 }, control: { x: 0.3512, y: 0.5984 }, end: { x: 0.3702, y: 0.5694 } } }" />
+<DrawnAnnotation text="context(_: FormulaScope)" :line="7" label="`_:` nothing reads it, it requires `formula { }` to call it" on="0" :geometry="{ label: { x: 0.6449, y: 0.4447 }, connector: { type: 'quadratic', start: { x: 0.3271, y: 0.5048 }, control: { x: 0.3700, y: 0.5085 }, end: { x: 0.3881, y: 0.4748 } } }" />
+<DrawnAnnotation text="Times(Ref(this), Ref(other))" />
 
 ```kotlin
 import presentation.support.expressions.Formulas
@@ -809,8 +810,6 @@ sealed interface Expr {
   data class Constant(val value: Double) : Expr
   data class Times(val left: Expr, val right: Expr) : Expr
 }
-
-class FormulaScope internal constructor()
 
 context(_: FormulaScope)
 operator fun Column<Number>.times(other: Column<Number>): Expr =
@@ -821,29 +820,207 @@ operator fun Column<Number>.times(other: Column<Number>): Expr =
 
 # Formulas build a tree
 
-<DrawnAnnotation text="sealed interface Expr" label="The formula as data, not text"  :geometry="{ label: { x: 0.6083, y: 0.1995 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2187 }, control: { x: 0.3780, y: 0.2364 }, end: { x: 0.4634, y: 0.1993 } } }"/>
-<DrawnAnnotation text="context(_: FormulaScope)" :line="7" label="`_`: nothing reads it, it only gates the call to `formula { }`" :connect="false" :geometry="{ label: { x: 0.585, y: 0.478 } }" />
-<DrawnAnnotation text="Times(this, Constant(factor))" label="An `Expr` composes with the next operator" color="var(--fundamentals-pink)" />
+<DrawnAnnotation text="FormulaScope" occurrence="2" label="Purely a marker type for scope control, has no functionality"  :geometry="{ label: { x: 0.4037, y: 0.8100 }, connector: { type: 'quadratic', start: { x: 0.2229, y: 0.7491 }, control: { x: 0.2239, y: 0.7680 }, end: { x: 0.2229, y: 0.7912 } } }"/>
 
 ```kotlin
 import presentation.support.expressions.Formulas
 
 sealed interface Expr {
   data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
+  data class Constant<T>(val value: T) : Expr<T>
   data class Times(val left: Expr, val right: Expr) : Expr
 }
-
-class FormulaScope internal constructor()
 
 context(_: FormulaScope)
 operator fun Column<Number>.times(other: Column<Number>): Expr =
   Times(Ref(this), Ref(other))
 
-context(_: FormulaScope)
-operator fun Expr.times(factor: Double): Expr =
-  Times(this, Constant(factor))
+@ExcelDSL
+class FormulaScope internal constructor()
 ```
 
 ---
 
+# Formulas build a tree
+
+```kotlin
+sealed interface Expr<out T> {
+  data class Ref<T>(val column: Column<T>) : Expr<T>
+  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
+  data class In<T>(val target: Expr<T>, val values: List<T>) : Expr<Boolean>
+  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+}
+```
+
+---
+
+# Formulas build a tree
+
+<InlineCompilerError text="operator" message="`operator` modifier is not applicable to function: must return `Boolean`.">
+
+```kotlin
+sealed interface Expr<out T> {
+  data class Ref<T>(val column: Column<T>) : Expr<T>
+  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
+  data class In<T>(val target: Expr<T>, val values: List<T>) : Expr<Boolean>
+  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+}
+
+context(_: FormulaScope)
+operator fun Column<String>.contains(other: String): Expr =
+  Contains(Ref(this), other)
+```
+
+</InlineCompilerError>
+
+---
+
+# Formulas build a tree
+
+```kotlin
+sealed interface Expr<out T> {
+  data class Ref<T>(val column: Column<T>) : Expr<T>
+  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
+  data class In<T>(val target: Expr<T>, val values: List<T>) : Expr<Boolean>
+  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+}
+
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr =
+  Contains(Ref(this), other)
+```
+
+---
+
+# Formulas build a tree
+
+```kotlin
+sealed interface Expr<out T> {
+  data class Ref<T>(val column: Column<T>) : Expr<T>
+  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
+  data class In<T>(val target: Expr<T>, val values: List<T>) : Expr<Boolean>
+  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+}
+
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+context(_: FormulaScope)
+infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+```
+
+---
+
+# Formulas build a tree
+
+```kotlin
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+context(_: FormulaScope)
+infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    formula("GOV") { customer contains "-GOV" }
+  }
+}
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="[1, 2] contains company" label="Infers `Any` for `A`" color="red"/>
+
+```kotlin
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+context(_: FormulaScope)
+infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    formula("GOV") { [1, 2] contains company }
+  }
+}
+```
+
+---
+
+# Formulas build a tree
+
+<InlineCompilerError text="contains" :line="12" message="Type inference failed. The value of the type parameter 'A' must be mentioned in input types (argument types, receiver type, or expected type). Try to specify it explicitly.">
+
+```kotlin
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+context(_: FormulaScope)
+infix fun <A> Iterable<@kotlin.internal.OnlyInputTypes A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    formula("GOV") { [1, 2] contains company }
+  }
+}
+```
+
+</InlineCompilerError>
+
+---
+
+# Formulas build a tree
+
+```kotlin
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+context(_: FormulaScope)
+infix fun <A> Iterable<@kotlin.internal.OnlyInputTypes A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    formula("GOV") { ["VRT", "VUB"] contains company }
+  }
+}
+```
+
+---
+
+# Formulas build a tree
+
+```kotlin
+context(_: FormulaScope)
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
+  Contains(Ref(this), other)
+
+@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
+context(_: FormulaScope)
+infix fun <A> Iterable<@kotlin.internal.OnlyInputTypes A>.contains(other: Column<A>): Expr<Boolean> =
+  In(Ref(other), this)
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    formula("GOV") { [1, 2] contains company }
+  }
+}
+```
+
+---
