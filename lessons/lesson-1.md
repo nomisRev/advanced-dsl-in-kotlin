@@ -65,34 +65,6 @@ workbook("invoices.xlsx") {
 </TypeHint>
 
 ---
-magic-move
----
-
-# Nested scopes leak the outer receiver
-
-
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
-```kotlin{1-2,4,6-8}
-import presentation.support.leaky.workbook
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer", bold = true) { it.customer }
-    this@workbook.sheet("Q2", q2) {
-      column("Customer", bold = true) { it.customer }
-    }
-  }
-}
-```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
----
 
 # `@DslMarker` closes the scope
 
@@ -110,7 +82,7 @@ magic-move
 
 # `@DslMarker` closes the scope
 
-<DrawnAnnotation text="@ExcelDsl" :line="5" label="Mark every builder that belongs to the DSL" :geometry="{ label: { x: 0.3640, y: 0.3977 }, connector: { type: 'quadratic', start: { x: 0.1588, y: 0.3673 }, control: { x: 0.1949, y: 0.3761 }, end: { x: 0.2095, y: 0.3507 } } }" :connect="false"/>
+<DrawnAnnotation text="@ExcelDsl" :line="5" label="Mark every builder that belongs to the DSL" :geometry="{ label: { x: 0.3933, y: 0.3738 }, connector: { type: 'quadratic', start: { x: 0.1612, y: 0.4098 }, control: { x: 0.1819, y: 0.4175 }, end: { x: 0.1902, y: 0.3878 } } }"/>
 <DrawnAnnotation text="@ExcelDsl" :line="14" />
 
 ```kotlin no-compile

@@ -167,7 +167,7 @@ class SheetBuilder<T> {
 # Every column has a cell type
 
 <DrawnAnnotation text="{ it.customer }" label="`String`"  :geometry="{ label: { x: 0.5305, y: 0.3001 }, connector: { type: 'quadratic', start: { x: 0.4603, y: 0.2636 }, control: { x: 0.4861, y: 0.2703 }, end: { x: 0.5028, y: 0.2439 } } }" :connect="false"/>
-<DrawnAnnotation text="{ it.hours }" label="`Number`"  :geometry="{ label: { x: 0.5311, y: 0.3449 }, connector: { type: 'quadratic', start: { x: 0.3943, y: 0.3131 }, control: { x: 0.4503, y: 0.3218 }, end: { x: 0.5074, y: 0.2965 } } }" :connect="false"/>
+<DrawnAnnotation text="{ it.hours }" label="`Number`"  :geometry="{ label: { x: 0.5315, y: 0.3517 }, connector: { type: 'quadratic', start: { x: 0.3943, y: 0.3131 }, control: { x: 0.4503, y: 0.3218 }, end: { x: 0.5074, y: 0.2965 } } }" :connect="false"/>
 <DrawnAnnotation text="{ it.issuedOn }" label="`LocalDate`"  :geometry="{ label: { x: 0.5467, y: 0.3976 }, connector: { type: 'quadratic', start: { x: 0.4379, y: 0.3606 }, control: { x: 0.4773, y: 0.3674 }, end: { x: 0.5167, y: 0.3493 } } }" :connect="false"/>
 <TypeHint :line="1" receiver="WorkbookBuilder">
 <TypeHint :line="2" receiver="SheetBuilder<Invoice>">
@@ -235,7 +235,8 @@ workbook("invoices.xlsx") {
   }  
 }
 
-fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) = TODO()
+@OverloadResolutionByLambdaReturnType
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Column<String> = TODO()
 ```
 
 </TypeHint>
@@ -269,7 +270,8 @@ workbook("invoices.xlsx") {
   }  
 }
 
-fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) = TODO()
+@OverloadResolutionByLambdaReturnType
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Column<String> = TODO()
 ```
 
 </TypeHint>
@@ -301,7 +303,8 @@ workbook("invoices.xlsx") {
   }
 }
 
-fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue) =
+@OverloadResolutionByLambdaReturnType
+fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue): Column<String> =
   column(name) { transform(it).formatted() }
 ```
 
@@ -316,15 +319,6 @@ magic-move
 class SheetBuilder<T> {
   fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
 ```
 
 ---
@@ -332,21 +326,12 @@ magic-move
 ---
 
 <DrawnAnnotation text="internal" />
-<DrawnAnnotation text="internal" occurrence="2" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.3490, y: 0.2458 }, connector: { type: 'quadratic', start: { x: 0.1444, y: 0.1931 }, control: { x: 0.1484, y: 0.2454 }, end: { x: 0.1752, y: 0.2486 } } }"/>
+<DrawnAnnotation text="internal" occurrence="2" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.3491, y: 0.2754 }, connector: { type: 'quadratic', start: { x: 0.1444, y: 0.1931 }, control: { x: 0.1484, y: 0.2454 }, end: { x: 0.1756, y: 0.2737 } } }"/>
 
 ```kotlin no-compile
 class SheetBuilder<T> internal constructor() {
   internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
-
-@OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
 ```
 
 ---
@@ -361,13 +346,13 @@ class SheetBuilder<T> internal constructor() {
 }
 
 @OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String): Column<String>
 
 @OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number): Column<Number>
 
 @OverloadResolutionByLambdaReturnType
-fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate): Column<LocalDate>
 ```
 
 ---
@@ -611,7 +596,7 @@ class FormulaScope internal constructor() {
 }
 
 context(formulas: FormulaScope)
-fun <A : Number> Column<A>.times(second: Column<A>) =
+operator fun Column<Number>.times(second: Column<Number>): Expr =
   formulas.times(this, second)
 ```
 
