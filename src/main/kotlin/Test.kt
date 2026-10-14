@@ -40,7 +40,7 @@ sealed interface Expr<out T> {
 class FormulaScope internal constructor()
 
 context(_: FormulaScope)
-operator infix fun Column<String>.contains(other: String): Expr<Boolean> =
+infix fun Column<String>.contains(other: String): Expr<Boolean> =
   Expr.Contains(Expr.Ref(this), other)
 
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
