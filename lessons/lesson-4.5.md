@@ -12,76 +12,23 @@ kodee: wave
 
 ## Delegated properties name the column
 
----
+------
 
 # The total is a number, not a formula
 
-<DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, the sheet never recalculates" color="red"  :geometry="{ label: { x: 0.7015, y: 0.4439 }, connector: { type: 'quadratic', start: { x: 0.3755, y: 0.4214 }, control: { x: 0.4046, y: 0.4528 }, end: { x: 0.4576, y: 0.4443 } } }"/>
-
-```kotlin
-import presentation.support.typed.generateExcel
-import presentation.support.typed.column
-
-generateExcel("invoices.xlsx", invoices) {
-  column("Customer") { it.customer }
-  column("Hours") { it.hours }
-  column("Rate") { it.rate }
-  column("Total") { it.hours * it.rate }
-}
-```
-```console
-| Customer | Hours | Rate | Total |
-| Ada      | 12    | 90   | 1080  |
-```
-
----
-magic-move
----
-
-# The total is a number, not a formula
-
-<DrawnAnnotation text="hours * rate" label="`hours` & `rate` are `Column<Number>`, not an `Int`" on="0" :geometry="{ label: { x: 0.7082, y: 0.4433 }, connector: { type: 'quadratic', start: { x: 0.3950, y: 0.4240 }, control: { x: 0.4231, y: 0.4535 }, end: { x: 0.4793, y: 0.4467 } } }"/>
-
-```kotlin no-compile
-import presentation.support.referenced.generateExcel
-
-generateExcel("invoices.xlsx", invoices) {
-  column("Customer") { it.customer }
-  val hours = column("Hours") { it.hours }
-  val rate = column("Rate") { it.rate }
-  column("Total") { hours * rate }
-}
-```
-```console
-| Customer | Hours | Rate | Total |
-| Ada      | 12    | 90   | 1080  |
-```
-
----
-magic-move
----
-
-# The total is a number, not a formula
-
-<DrawnAnnotation text="formula" on="0" />
-<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.7029, y: 0.4449 }, connector: { type: 'quadratic', start: { x: 0.4963, y: 0.4232 }, control: { x: 0.5375, y: 0.4573 }, end: { x: 0.5858, y: 0.4483 } } }"/>
-<DrawnAnnotation text="=B2*C2" />
-
-<DrawnAnnotation text="hours" on="1" />
-<DrawnAnnotation text="&quot;Hours&quot;" on="1" />
-<DrawnAnnotation text="rate" on="1" occurrence="2" />
+<DrawnAnnotation text="hours" />
+<DrawnAnnotation text="&quot;Hours&quot;" />
+<DrawnAnnotation text="rate" occurrence="2" />
 <DrawnAnnotation text="&quot;Rate&quot;" />
-<DrawnAnnotation text="total" on="1" />
-<DrawnAnnotation text="&quot;Total&quot;" label="Redundant redefinition of column name" on="1" :geometry="{ label: { x: 0.6013, y: 0.4441 }, connector: { type: 'quadratic', start: { x: 0.3437, y: 0.4195 }, control: { x: 0.3569, y: 0.4647 }, end: { x: 0.4002, y: 0.4468 } } }"/>
 
 ```kotlin
-import presentation.support.referenced.generateExcel
-
-generateExcel("invoices.xlsx", invoices) {
-  column("Customer") { it.customer }
-  val hours = column("Hours") { it.hours }
-  val rate = column("Rate") { it.rate }
-  val total = formula("Total") { hours * rate }
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+  }
 }
 ```
 ```console
@@ -100,11 +47,13 @@ magic-move
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
-  val customer by column { it.customer }
-  val hours by column { it.hours }
-  val rate by column { it.rate }
-  val total by formula { hours * rate }
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    val customer by column { it.customer }
+    val hours by column { it.hours }
+    val rate by column { it.rate }
+    val total by formula { hours * rate }
+  }
 }
 ```
 <DrawnAnnotation text="c" color="red" on="1" />
@@ -122,7 +71,7 @@ magicMove: true
 
 # Inject configuration
 
-```kotlin{4-5}
+```kotlin{3,6}
 import presentation.support.delegated.SheetBuilder
 import presentation.support.writeWorkbook
 
@@ -132,11 +81,9 @@ companion val ExcelConfig.Default =
   ExcelConfig(columnNameStyle = { it.replaceFirstChar(Char::uppercase) })
 
 // Example
-inline fun <T> generateExcel(
+inline fun <T> workbook(
   path: String,
-  rows: Sequence<T>,
-  config: ExcelConfig =
-    ExcelConfig(columnNameStyle = { it.replaceFirstChar(Char::uppercase) }),
+  config: Config = Config(columnNameStyle = { it.replaceFirstChar(Char::uppercase) }),
   block: SheetBuilder<T>.() -> Unit,
 ) {
   val builder = SheetBuilder<T>(config.columnNameStyle).apply(block)
@@ -231,18 +178,18 @@ magic-move
 
 # `ReadOnlyProperty` names the contract
 
-<DrawnAnnotation text="ReadOnlyProperty<Any?, Column<Number>>" label="`thisRef` is `Any?`, the property is a local inside a lambda" />
+<DrawnAnnotation text="ReadOnlyProperty<Any?, Column<Number>>"/>
 
 ```kotlin no-compile
 fun interface ReadOnlyProperty<in T, out V> {
   operator fun getValue(thisRef: T, property: KProperty<*>): V
 }
 
-class Column<V>(val name: String, val index: Int)
+typealias ColumnBuilder<V> = ReadOnlyProperty<Any?, Column<V>>
 
 @ExcelDsl
 class SheetBuilder<T> {
-  fun column(value: (T) -> Number): ReadOnlyProperty<Any?, Column<Number>>
+  fun column(value: (T) -> Number): ColumnBuilder<Number>
 }
 ```
 
@@ -257,7 +204,7 @@ class SheetBuilder<T> {
 class SheetBuilder<T> {
   private val columns: MutableList<Column<*>> = mutableListOf()
 
-  fun column(value: (T) -> Number): ReadOnlyProperty<Any?, Column<Number>>
+  fun column(value: (T) -> Number): ColumnBuilder<Number>
 }
 ```
 
@@ -388,31 +335,4 @@ Full mode marks the library's declarations in the compiled Kotlin metadata.
 Consumers enable check or full to report unused results. Unit-returning operations
 need no annotation. Immediate registration functions opt out with
 @IgnorableReturnValue; delegate factories do not.
--->
-
----
-
-# The lambda still picks the type
-
-<TypeHint :line="2" text="customer" type="Column<String>">
-<TypeHint :line="3" text="hours" type="Column<Number>">
-<TypeHint :line="4" text="issued" type="Column<LocalDate>">
-
-```kotlin
-import presentation.support.delegated.generateExcel
-
-generateExcel("invoices.xlsx", invoices) {
-  val customer by column { it.customer }
-  val hours by column { it.hours }
-  val issued by column { it.issuedOn }
-}
-```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-<!--
-Same @OverloadResolutionByLambdaReturnType + @JvmName overloads as Part 2,
-each returning a PropertyDelegateProvider for its own Column<V>. Verified on 2.4.20.
 -->

@@ -52,37 +52,10 @@ src: ./lessons/lesson-1.md
 src: ./lessons/lesson-2.md
 ---
 ---
-src: ./lessons/lesson-2.5.md
----
----
-src: ./lessons/lesson-4.md
----
----
 src: ./lessons/lesson-4.5.md
 ---
 ---
-src: ./lessons/lesson-6.md
----
----
 src: ./lessons/closing.md
----
----
-src: ./lessons/extra-flow.md
----
----
-src: ./lessons/extra-sheets-as-values.md
----
----
-src: ./lessons/extra-tricks.md
----
----
-src: ./lessons/extra-realistic-library.md
----
----
-src: ./lessons/extra-dsl-mechanics.md
----
----
-src: ./lessons/extra-gaps.md
 ---
 
 <!-- End of imported slides. -->
