@@ -418,7 +418,7 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 
-<DrawnAnnotation text="SheetBuilder" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3180, y: 0.8144 }, connector: { type: 'quadratic', start: { x: 0.2213, y: 0.7456 }, control: { x: 0.2399, y: 0.7637 }, end: { x: 0.2340, y: 0.7921 } } }"/>
+<DrawnAnnotation text="SheetBuilder" on="1" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3180, y: 0.8144 }, connector: { type: 'quadratic', start: { x: 0.2213, y: 0.7456 }, control: { x: 0.2399, y: 0.7637 }, end: { x: 0.2340, y: 0.7921 } } }"/>
 
 ```kotlin no-compile
 package my.app.dsl
@@ -1045,7 +1045,7 @@ workbook("invoices.xlsx") {
 
 # Formulas build a tree
 
-<InlineCompilerError text="contains" message="Type inference failed. The value of the type parameter A must be mentioned in input types.">
+<InlineCompilerError text="contains" occurrence="2" message="Type inference failed. The value of the type parameter A must be mentioned in input types.">
 
 ```kotlin
 import presentation.support.trees.*
