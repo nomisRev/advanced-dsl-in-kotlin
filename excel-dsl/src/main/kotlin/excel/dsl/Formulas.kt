@@ -162,8 +162,8 @@ operator fun Expr<Number>.times(other: Column<Number>): Expr<Double> = Expr.Time
 context(_: Formulas)
 operator fun Column<Number>.times(other: Expr<Number>): Expr<Double> = Expr.Times(Expr.Ref(this), other)
 
-context(_: Formulas)
-operator fun Column<Number>.times(other: Column<Number>): Expr<Double> = Expr.Times(Expr.Ref(this), Expr.Ref(other))
+//context(_: Formulas)
+//operator fun Column<Number>.times(other: Column<Number>): Expr<Double> = Expr.Times(Expr.Ref(this), Expr.Ref(other))
 
 context(_: Formulas)
 operator fun Column<Number>.times(other: Number): Expr<Double> = Expr.Times(Expr.Ref(this), constant(other))

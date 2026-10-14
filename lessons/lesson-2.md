@@ -194,16 +194,39 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
+# An extension groups the columns
+
+<DrawnAnnotation text="fun SheetBuilder<Invoice>.invoice()" label="Named once, called in every sheet"  :geometry="{ label: { x: 0.6672, y: 0.5269 }, connector: { type: 'quadratic', start: { x: 0.4527, y: 0.4570 }, control: { x: 0.4872, y: 0.4588 }, end: { x: 0.4995, y: 0.5048 } } }"/>
+
+```kotlin
+import presentation.support.typed.SheetBuilder
+import presentation.support.typed.generateExcel
+import presentation.support.typed.column
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) { invoice() }
+  sheet("Q2", q2) { invoice() }
+}
+
+fun SheetBuilder<Invoice>.invoice() {
+  column("Customer") { it.customer }
+  column("Hours") { it.hours }
+  column("Issued") { it.issuedOn }
+}
+```
+
+---
+magic-move
+---
+
 # Every column has a cell type
 
-<InlineCompilerError :line="8" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="3" receiver="WorkbookBuilder">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
+<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.typed.generateExcel
-
-fun <A> SheetBuilder<A>.column(name: String, block: (A) -> CellValue) = TODO()
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
@@ -213,6 +236,42 @@ workbook("invoices.xlsx") {
     column("custom") { it.customCell }
   }  
 }
+
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) = TODO()
+```
+
+</TypeHint>
+</TypeHint>
+</InlineCompilerError>
+
+---
+magic-move
+---
+
+# Every column has a cell type
+
+<InlineCompilerError :line="8" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<DrawnAnnotation text="this@sheet.column" />
+<DrawnAnnotation text="this@sheet.column" :occurrence="2" />
+<DrawnAnnotation text="this@sheet.column" :occurrence="3" label="Class method always resolve over extensions"  :geometry="{ label: { x: 0.2716, y: 0.4633 } }"/>
+
+```kotlin
+import presentation.support.typed.generateExcel
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    this@sheet.column("Customer") { it.customer }
+    this@sheet.column("Hours") { it.hours }
+    this@sheet.column("Issued") { it.issuedOn }
+    
+    
+    column("custom") { it.customCell }
+  }  
+}
+
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) = TODO()
 ```
 
 </TypeHint>
@@ -225,33 +284,27 @@ magic-move
 
 # An extension with its own name adds a type
 
-<DrawnAnnotation text="cellColumn" :line="1" />
-<DrawnAnnotation text="formatted()" />
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
+<DrawnAnnotation text="cellColumn" label="Disambiguate using function name"  :geometry="{ label: { x: 0.3719, y: 0.5203 }, connector: { type: 'quadratic', start: { x: 0.1774, y: 0.4697 }, control: { x: 0.1759, y: 0.5044 }, end: { x: 0.2005, y: 0.5166 } } }"/>
+<DrawnAnnotation text="cellColumn" :occurrence="2" />
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
 
 ```kotlin no-compile
 import presentation.support.typed.SheetBuilder
 import presentation.support.typed.generateExcel
 import presentation.support.typed.column
 
-fun <A> SheetBuilder<Invoice>.cellColumn(name: String) =
-  column(name) { it.customCell.formatted() }
-
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     column("Customer") { it.customer }
     column("Hours") { it.hours }
     column("Issued") { it.issuedOn }
-
-
-    cellColumn("custom")
+    cellColumn("custom") { it.customCell }
   }
 }
-```
-```console
-| Customer | Reference      |
-| Ada      | ADA-2026-09-01 |
+
+fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue) =
+  column(name) { transform(it).formatted() }
 ```
 
 </TypeHint>
@@ -261,22 +314,536 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# An extension groups the columns
+```kotlin
+class SheetBuilder<T> {
+  fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
+}
 
-<DrawnAnnotation text="fun SheetBuilder<Invoice>.invoice()" label="Named once, called in every sheet"  :geometry="{ label: { x: 0.6672, y: 0.5269 }, connector: { type: 'quadratic', start: { x: 0.4527, y: 0.4570 }, control: { x: 0.4872, y: 0.4588 }, end: { x: 0.4995, y: 0.5048 } } }"/>
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
+```
+
+---
+magic-move
+---
+
+<DrawnAnnotation text="internal" />
+<DrawnAnnotation text="internal" occurrence="2" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.3490, y: 0.2458 }, connector: { type: 'quadratic', start: { x: 0.1444, y: 0.1931 }, control: { x: 0.1484, y: 0.2454 }, end: { x: 0.1752, y: 0.2486 } } }"/>
 
 ```kotlin
-import presentation.support.typed.SheetBuilder
-import presentation.support.typed.generateExcel
-import presentation.support.typed.column
-
-generateExcel("invoices.xlsx", invoices) {
-  invoice()
+class SheetBuilder<T> internal constructor() {
+  internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
 
-fun SheetBuilder<Invoice>.invoice() {
-  column("Customer") { it.customer }
-  column("Hours") { it.hours }
-  column("Issued") { it.issuedOn }
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
+```
+
+---
+magic-move
+---
+
+```kotlin
+package excel.dsl
+
+class SheetBuilder<T> internal constructor() {
+  internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
+}
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate)
+```
+
+---
+magic-move
+---
+
+<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
+<TypeHint :line="3" receiver="WorkbookBuilder">
+<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
+
+```kotlin show-imports
+import excel.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+  }
+}
+
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) =
+  column(name) { transform(it).formatted() }
+```
+
+</TypeHint>
+</TypeHint>
+</InlineCompilerError>
+
+---
+magic-move
+---
+
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
+
+```kotlin show-imports
+import excel.dsl.*
+import my.app.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+  }
 }
 ```
+
+</TypeHint>
+</TypeHint>
+
+<DrawnAnnotation text="SheetBuilder" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3180, y: 0.8144 }, connector: { type: 'quadratic', start: { x: 0.2213, y: 0.7456 }, control: { x: 0.2399, y: 0.7637 }, end: { x: 0.2340, y: 0.7921 } } }"/>
+
+```kotlin
+package my.app.dsl
+
+@OverloadResolutionByLambdaReturnType
+fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue)
+```
+
+---
+
+# The total is a number, not a formula
+
+<DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("Hours") { it.hours }
+    column("Rate") { it.rate }
+    column("Total") { it.hours * it.rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+<DrawnAnnotation text="1080" color="red" />
+
+```console
+| Customer | Hours | Rate | Total |
+| Ada      | 12    | 90   | 1080  |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<DrawnAnnotation text="val hours" />
+<DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.3015, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1626, y: 0.4156 }, control: { x: 0.1647, y: 0.4559 }, end: { x: 0.1638, y: 0.5042 } } }"/>
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    column("Total") { it.hours * it.rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | 1080  |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<InlineCompilerError :line="7" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    
+    column("Total") { hours * rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</InlineCompilerError>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="7" receiver="FormulaBuilder">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    
+    formula("Total") { hours * rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+magic-move
+---
+
+# The total is a number, not a formula
+
+<InlineCompilerError :line="9" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="7" receiver="FormulaBuilder">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    
+    formula("Total") { hours * rate }
+
+    hours * rate
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+</InlineCompilerError>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+```kotlin
+class FormulaScope internal constructor() {
+  internal fun times(first: Column<Number>, second: Column<Number>): Expr
+}
+```
+
+---
+magic-move
+---
+
+```kotlin
+class FormulaScope internal constructor() {
+  internal fun times(first: Column<Number>, second: Column<Number>): Expr
+}
+
+context(formulas: FormulaScope)
+fun <A : Number> Column<A>.times(second: Column<A>) =
+  formulas.times(this, second)
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" receiver="WorkbookBuilder">
+<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="6" receiver="FormulaScope">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaScope">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaScope">
+<InlineCompilerError text="times" message="TODO">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") {
+      times(hours, rate)
+    }
+  }
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaScope">
+<DrawnAnnotation text="contextOf<FormulaScope>().times" label="Explicitly get instance of `context(FormulaScope)`, and call a method on it"  :geometry="{ label: { x: 0.5107, y: 0.5793 } }"/>
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") {
+      contextOf<FormulaScope>().times(hours, rate)
+    }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+- Receiver can resolve context
+- Context cannot be used as receiver, or `this`
+
+```kotlin
+val ctx: context(CoroutineScope) () -> Job = {
+  val scope = contextOf<CoroutineScope>()
+  scope.launch { }
+}
+
+val receiver: Corotuinescope.() -> Job = {
+  val scope = this
+  launch { }
+}
+```
+
+---
+
+# Fluent DSL vs Mutable DSL
+
+```kotlin
+fun formula(block: context(FormulaScope) () -> Expr): Formula
+
+fun worksheet(block: context(WorkbookBuilder) () -> Unit): Workbook
+```
+
+---
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaScope">
+
+```kotlin
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate * 1.21 }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2*1.21 |
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="sealed interface Expr" label="The formula as data"  :geometry="{ label: { x: 0.4684, y: 0.1929 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2222 }, control: { x: 0.3385, y: 0.2275 }, end: { x: 0.3712, y: 0.2032 } } }"/>
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Expr {
+  data class Ref(val column: Column<Number>) : Expr
+  data class Constant(val value: Double) : Expr
+  data class Times(val left: Expr, val right: Expr) : Expr
+}
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="context(_: FormulaScope)" :line="9" label="`_:` nothing reads it, it requires `formula { }` to call it" :geometry="{ label: { x: 0.6267, y: 0.5485 }, connector: { type: 'quadratic', start: { x: 0.3250, y: 0.5993 }, control: { x: 0.3512, y: 0.5984 }, end: { x: 0.3702, y: 0.5694 } } }" />
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Expr {
+  data class Ref(val column: Column<Number>) : Expr
+  data class Constant(val value: Double) : Expr
+  data class Times(val left: Expr, val right: Expr) : Expr
+}
+
+class FormulaScope internal constructor()
+
+context(_: FormulaScope)
+operator fun Column<Number>.times(other: Column<Number>): Expr =
+  Times(Ref(this), Ref(other))
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="sealed interface Expr" label="The formula as data, not text"  :geometry="{ label: { x: 0.6083, y: 0.1995 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2187 }, control: { x: 0.3780, y: 0.2364 }, end: { x: 0.4634, y: 0.1993 } } }"/>
+<DrawnAnnotation text="context(_: FormulaScope)" :line="7" label="`_`: nothing reads it, it only gates the call to `formula { }`" :connect="false" :geometry="{ label: { x: 0.585, y: 0.478 } }" />
+<DrawnAnnotation text="Times(this, Constant(factor))" label="An `Expr` composes with the next operator" color="var(--fundamentals-pink)" />
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Expr {
+  data class Ref(val column: Column<Number>) : Expr
+  data class Constant(val value: Double) : Expr
+  data class Times(val left: Expr, val right: Expr) : Expr
+}
+
+class FormulaScope internal constructor()
+
+context(_: FormulaScope)
+operator fun Column<Number>.times(other: Column<Number>): Expr =
+  Times(Ref(this), Ref(other))
+
+context(_: FormulaScope)
+operator fun Expr.times(factor: Double): Expr =
+  Times(this, Constant(factor))
+```
+
+---
+

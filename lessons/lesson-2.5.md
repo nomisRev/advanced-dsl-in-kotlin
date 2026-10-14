@@ -14,122 +14,74 @@ kodee: wave
 
 ---
 
-# Every column has a cell type
-
-<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="3" receiver="WorkbookBuilder">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
-import presentation.support.typed.generateExcel
-
-fun <A> SheetBuilder<A>.column(name: String, block: (A) -> CellValue) = TODO()
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    column("custom") { it.customCell }
-  }  
+class SheetBuilder<T> private constructor() {
+  internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String) = add(...)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number) = add(...)
+
+@OverloadResolutionByLambdaReturnType
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate) = add(...)
 ```
-
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
-
----
-
-# Every column has a cell type
-
-<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="3" receiver="WorkbookBuilder">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-<DrawnAnnotation text="column" :occurrence="4" label="Class method has highest resolution priority">
-
-```kotlin
-import presentation.support.typed.generateExcel
-
-fun <A> SheetBuilder<A>.column(name: String, block: (A) -> CellValue) = TODO()
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    column("custom") { it.customCell }
-  }  
-}
-
-class SheetBuilder<T> {
-  @OverloadResolutionByLambdaReturnType
-  @JvmName("textColumn")
-  fun column(name: String, value: (T) -> String)
-}
-```
-
-</DrawnAnnotation>
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
-
----
-
-# Every column has a cell type
-
-```kotlin
-class SheetBuilder<T> {
-  fun <V> add(
-    name: String,
-    value: (T) -> ColumnSpec<V>
-  ): Column<V>
-}
-```
-
 
 ---
 magic-move
 ---
 
-# Every column has a cell type
+<DrawnAnnotation text="builder"/>
+<DrawnAnnotation text="builder" occurrence="2" label="Explicitly reference context parameter" :geometry="{ label: { x: 0.7584, y: 0.4687 } }"/>
 
 ```kotlin
-class SheetBuilder<T> {
-  fun <V> add(
-    name: String,
-    value: (T) -> ColumnSpec<V>
-  ): Column<V>
+class SheetBuilder<T> private constructor() {
+  internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
 
 @OverloadResolutionByLambdaReturnType
 context(builder: SheetBuilder<T>)
-fun <T> column(name: String, value: (T) -> String) =
-  builder.add(name) { ColumnSpec.string(value(it)) }
+fun <T> column(name: String, value: (T) -> String) = builder.add(...)
+
+@OverloadResolutionByLambdaReturnType
+context(builder: SheetBuilder<T>)
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number) = builder.add(...)
+
+@OverloadResolutionByLambdaReturnType
+context(builder: SheetBuilder<T>)
+fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate) = builder.add(...)
 ```
 
 ---
 
-# Every column has a cell type
 
-<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="3" receiver="WorkbookBuilder">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
 
-```kotlin
-package my.application
-
+```kotlin show-imports
 import excel.dsl.*
-
-context(builder: SheetBuilder<A>)
-fun <A> column(name: String, block: (A) -> CellValue) = TODO()
+import my.app.dsl.*
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     column("Customer") { it.customer }
     column("custom") { it.customCell }
-  }  
+  }
 }
 ```
 
 </TypeHint>
 </TypeHint>
-</InlineCompilerError>
+
+```kotlin
+package my.app.dsl
+
+@OverloadResolutionByLambdaReturnType
+context(builder: SheetBuilder<A>)
+fun <A> column(name: String, transform: (A) -> CellValue)
+```
 
 ---
+
