@@ -65,7 +65,6 @@ class Sheet<in T> internal constructor(
     }
   }
 
-  fun totals(rows: Iterable<T>): Map<String, Any?> = totals(rows.asSequence())
 
   /** Values, blanks and errors, indexed by typed column handles. */
   fun evaluateTyped(row: T): EvaluatedRow = EvaluatedRow(evaluateRow(row))

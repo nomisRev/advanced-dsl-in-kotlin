@@ -61,5 +61,5 @@ class WorkbookBuilder @PublishedApi internal constructor() {
  * }
  * ```
  */
-inline fun workbook(block: WorkbookBuilder.() -> Unit): Workbook =
+inline fun workbook(block: context(WorkbookBuilder) () -> Unit): Workbook =
   WorkbookBuilder().apply(block).build()

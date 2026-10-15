@@ -531,6 +531,32 @@ workbook("invoices.xlsx") {
 
 ---
 
+# DslMarker closes the context
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<InlineCompilerError :line="5" text="sheet" message="Cannot be called in this context with an implicit receiver\nUse an explicit receiver if necessary.">
+
+```kotlin{1-2,5}
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer", bold = true) { it.customer }
+    
+    sheet("Q2", q2) {
+    
+      column("Customer", bold = true) { it.customer }
+    }
+  }
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+
+
+---
+
 # The total is a number, not a formula
 
 <DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
