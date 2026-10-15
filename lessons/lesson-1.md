@@ -12,6 +12,13 @@ kodee: wave
 
 ## What `@DslMarker` is for
 
+<!--
+- BREATH
+- Control -> Called
+- Control -> Resolved
+- SCOPE! (Comes back)
+-->
+
 ---
 
 # One file, many sheets
@@ -36,6 +43,12 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 </TypeHint>
+
+<!--
+- Workbook builder
+- Sheet builder
+- Mutable DSL
+-->
 
 ---
 
@@ -64,6 +77,11 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 
+<!--
+- Illegal nesting
+- outer Workbook builder
+-->
+
 ---
 
 # `@DslMarker` closes the scope
@@ -75,6 +93,11 @@ workbook("invoices.xlsx") {
 @Target(AnnotationTarget.CLASS)
 annotation class ExcelDsl
 ```
+
+<!--
+- Annotation for annotation
+- Create own
+-->
 
 ---
 magic-move
@@ -104,6 +127,11 @@ class SheetBuilder<T> {
   fun column(name: String, bold: Boolean = false, value: (T) -> Any?)
 }
 ```
+
+<!--
+- Annotation for annotation
+- Create own
+-->
 
 ---
 

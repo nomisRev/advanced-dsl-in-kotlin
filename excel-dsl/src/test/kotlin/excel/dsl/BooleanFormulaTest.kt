@@ -48,7 +48,7 @@ class BooleanFormulaTest {
 
   @Test
   fun `standalone evaluation preserves booleans`() {
-    val yes = Expr.Compare(Expr.Constant(1.0), Comparison.Equal, Expr.Constant(1.0))
-    assertEquals(CellResult.Value(true), Expr.If(yes, yes, Expr.Bool(false)).evaluate(emptyMap()))
+    val yes = Formula.Compare(Formula.Constant(1.0), Comparison.Equal, Formula.Constant(1.0))
+    assertEquals(CellResult.Value(true), Formula.If(yes, yes, Formula.Bool(false)).evaluate(emptyMap()))
   }
 }

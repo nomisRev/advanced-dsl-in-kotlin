@@ -83,7 +83,7 @@ class NumericSemanticsTest {
       assertFailsWith<IllegalArgumentException> { sheet<Unit> { formula("Compare") { literal(1) eq value } } }
       assertFailsWith<IllegalArgumentException> { sheet<Unit> { formula("Branch") { literal(true) then value otherwise 0 } } }
     }
-    assertFailsWith<IllegalArgumentException> { Expr.Constant(Double.MIN_VALUE) }
+    assertFailsWith<IllegalArgumentException> { Formula.Constant(Double.MIN_VALUE) }
   }
 
   @Test

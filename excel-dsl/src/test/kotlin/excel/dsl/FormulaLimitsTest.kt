@@ -104,7 +104,7 @@ class FormulaLimitsTest {
   }
 
   context(_: Formulas)
-  private fun aggregate(function: String, columns: List<Column<Number>>): Expr<Double> = when (function) {
+  private fun aggregate(function: String, columns: List<Column<Number>>): Formula<Double> = when (function) {
     "SUM" -> sum(columns)
     "AVERAGE" -> average(columns)
     "MIN" -> min(columns)

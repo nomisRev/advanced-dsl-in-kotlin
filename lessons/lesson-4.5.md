@@ -18,7 +18,7 @@ kodee: wave
 
 <DrawnAnnotation text="hours" />
 <DrawnAnnotation text="&quot;Hours&quot;" />
-<DrawnAnnotation text="rate" occurrence="2" />
+<DrawnAnnotation text="rate" />
 <DrawnAnnotation text="&quot;Rate&quot;" />
 
 ```kotlin
@@ -44,7 +44,7 @@ magic-move
 
 # Columns become values we can reference
 
-<DrawnAnnotation text="val hours by column" label="The header comes from the property name" on="0" :geometry="{ label: { x: 0.6629, y: 0.2961 }, connector: { type: 'quadratic', start: { x: 0.2941, y: 0.3162 }, control: { x: 0.4298, y: 0.3270 }, end: { x: 0.4520, y: 0.3063 } } }"/>
+<DrawnAnnotation text="val hours by column" label="The header comes from the property name" on="0" :geometry="{ label: { x: 0.6922, y: 0.3436 }, connector: { type: 'quadratic', start: { x: 0.3205, y: 0.3631 }, control: { x: 0.4562, y: 0.3739 }, end: { x: 0.4784, y: 0.3532 } } }"/>
 
 ```kotlin
 import presentation.support.delegated.workbook
@@ -61,7 +61,7 @@ workbook("invoices.xlsx") {
 <DrawnAnnotation text="c" color="red" on="1" />
 <DrawnAnnotation text="h" color="red" on="1" />
 <DrawnAnnotation text="r" color="red" occurrence="3" on="1" />
-<DrawnAnnotation text="t" color="red" occurrence="3" on="1" label="All lowercase"  :connect="false" :geometry="{ label: { x: 0.2814, y: 0.6612 }, connector: { type: 'quadratic', start: { x: 0.3604, y: 0.5424 }, control: { x: 0.3521, y: 0.6033 }, end: { x: 0.3604, y: 0.6642 } } }"/>
+<DrawnAnnotation text="t" color="red" occurrence="3" on="1" label="All lowercase"  :connect="false" :geometry="{ label: { x: 0.3549, y: 0.7371 }, connector: { type: 'quadratic', start: { x: 0.3604, y: 0.5424 }, control: { x: 0.3521, y: 0.6033 }, end: { x: 0.3604, y: 0.6642 } } }"/>
 ```console
 | customer | hours | rate | total  |
 | Ada      | 12    | 90   | =B2*C2 |
@@ -178,7 +178,7 @@ magic-move
 
 # `ReadOnlyProperty` names the contract
 
-<DrawnAnnotation text="ReadOnlyProperty<Any?, Column<Number>>"/>
+<DrawnAnnotation text="ReadOnlyProperty<Any?, Column<V>>"/>
 
 ```kotlin no-compile
 fun interface ReadOnlyProperty<in T, out V> {
@@ -197,7 +197,7 @@ class SheetBuilder<T> {
 
 # Registering in `getValue` is dangerous
 
-<DrawnAnnotation text="private val columns" label="The sheet has to know its columns up front"  :geometry="{ label: { x: 0.2732, y: 0.5695 }, connector: { type: 'quadratic', start: { x: 0.1160, y: 0.3255 }, control: { x: 0.1052, y: 0.4356 }, end: { x: 0.1160, y: 0.5466 } } }"/>
+<DrawnAnnotation text="private val columns" label="The sheet contains mutable state"  :geometry="{ label: { x: 0.2732, y: 0.5695 }, connector: { type: 'quadratic', start: { x: 0.1160, y: 0.3255 }, control: { x: 0.1052, y: 0.4356 }, end: { x: 0.1160, y: 0.5466 } } }"/>
 
 ```kotlin no-compile
 @ExcelDsl
@@ -214,7 +214,7 @@ magic-move
 
 # Registering in `getValue` is too late
 
-<DrawnAnnotation text="ReadOnlyProperty { _: Any?, property ->" label="Runs on every read, or never" color="red" on="0" :geometry="{ label: { x: 0.7570, y: 0.6074 }, connector: { type: 'quadratic', start: { x: 0.7514, y: 0.4243 }, control: { x: 0.7340, y: 0.4893 }, end: { x: 0.7508, y: 0.5844 } } }" />
+<DrawnAnnotation text="ReadOnlyProperty { _: Any?, property ->" label="Runs on every read, or never" color="red" on="0" :geometry="{ label: { x: 0.7570, y: 0.6074 }, connector: { type: 'quadratic', start: { x: 0.7514, y: 0.4243 }, control: { x: 0.7695, y: 0.4922 }, end: { x: 0.7508, y: 0.5844 } } }" />
 <DrawnAnnotation text="columns.add(column)" label="Not idempotent but might be called 0 or many times" color="red" on="1" :geometry="{ label: { x: 0.3306, y: 0.6230 }, connector: { type: 'quadratic', start: { x: 0.2057, y: 0.5139 }, control: { x: 0.2026, y: 0.5474 }, end: { x: 0.2001, y: 0.5913 } } }"/>
 
 ```kotlin
@@ -238,7 +238,7 @@ magic-move
 
 # `PropertyDelegateProvider` runs at the `by`
 
-<DrawnAnnotation text="PropertyDelegateProvider { _: Any?, property ->" label="Runs once, when `by column { }` is evaluated\nOptimised away" on="0" :geometry="{ label: { x: 0.7276, y: 0.3589 }, connector: { type: 'quadratic', start: { x: 0.6300, y: 0.4576 }, control: { x: 0.6548, y: 0.4533 }, end: { x: 0.6618, y: 0.4118 } } }"/>
+<DrawnAnnotation text="PropertyDelegateProvider { _: Any?, property ->" label="Runs once, when `by column { }` is evaluated\nOptimised away by compiler" on="0" :geometry="{ label: { x: 0.7276, y: 0.3589 }, connector: { type: 'quadratic', start: { x: 0.6300, y: 0.4576 }, control: { x: 0.6548, y: 0.4533 }, end: { x: 0.6618, y: 0.4118 } } }"/>
 <DrawnAnnotation text="ReadOnlyProperty { _: Any?, _ -> column }" label="Every read returns the registered column" on="1" :geometry="{ label: { x: 0.4175, y: 0.6770 } }"/>
 
 ```kotlin

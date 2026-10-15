@@ -7,42 +7,42 @@ private const val MAX_FORMULA_TEXT_LENGTH = 255
 private const val MAX_FUNCTION_ARGUMENTS = 255
 
 /** A typed formula tree, built once and rendered for each row. */
-sealed class Expr<out V> private constructor() {
+sealed class Formula<out V> private constructor() {
   @ConsistentCopyVisibility
-  internal data class Ref<V> internal constructor(val column: Column<V>) : Expr<V>()
+  internal data class Ref<V> internal constructor(val column: Column<V>) : Formula<V>()
 
   /** A range is only valid as an aggregate operand in a totals formula. */
-  internal data class Range(val column: Column<*>) : Expr<Nothing>()
-  internal data class Constant(val value: Double) : Expr<Double>() {
+  internal data class Range(val column: Column<*>) : Formula<Nothing>()
+  internal data class Constant(val value: Double) : Formula<Double>() {
     init {
       require(value.isExcelNumber()) { "Excel has no literal for $value" }
     }
   }
 
-  internal data class Text(val value: String) : Expr<String>() {
+  internal data class Text(val value: String) : Formula<String>() {
     init {
       require(value.length <= MAX_FORMULA_TEXT_LENGTH) {
         "Excel formula text literals hold at most $MAX_FORMULA_TEXT_LENGTH characters; got ${value.length}"
       }
     }
   }
-  internal data class Bool(val value: Boolean) : Expr<Boolean>()
-  internal data class Plus(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
-  internal data class Minus(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
-  internal data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
-  internal data class Div(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>()
+  internal data class Bool(val value: Boolean) : Formula<Boolean>()
+  internal data class Plus(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>()
+  internal data class Minus(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>()
+  internal data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>()
+  internal data class Div(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>()
 
   @ConsistentCopyVisibility
-  internal data class Compare internal constructor(val left: Expr<*>, val comparison: Comparison, val right: Expr<*>) :
-    Expr<Boolean>()
+  internal data class Compare internal constructor(val left: Formula<*>, val comparison: Comparison, val right: Formula<*>) :
+    Formula<Boolean>()
 
-  internal data class And(val left: Expr<Boolean>, val right: Expr<Boolean>) : Expr<Boolean>()
-  internal data class Or(val left: Expr<Boolean>, val right: Expr<Boolean>) : Expr<Boolean>()
-  internal data class Not(val value: Expr<Boolean>) : Expr<Boolean>()
+  internal data class And(val left: Formula<Boolean>, val right: Formula<Boolean>) : Formula<Boolean>()
+  internal data class Or(val left: Formula<Boolean>, val right: Formula<Boolean>) : Formula<Boolean>()
+  internal data class Not(val value: Formula<Boolean>) : Formula<Boolean>()
 
   /** Owns a defensive snapshot: later changes to the input cannot change a sheet. */
-  internal class Aggregate(val function: AggregateFunction, terms: List<Expr<*>>) : Expr<Double>() {
-    val terms: List<Expr<*>> = Collections.unmodifiableList(terms.toList())
+  internal class Aggregate(val function: AggregateFunction, terms: List<Formula<*>>) : Formula<Double>() {
+    val terms: List<Formula<*>> = Collections.unmodifiableList(terms.toList())
 
     init {
       require(this.terms.isNotEmpty()) { "${function.excel} needs at least one term" }
@@ -56,9 +56,9 @@ sealed class Expr<out V> private constructor() {
     override fun toString(): String = "Aggregate($function, $terms)"
   }
 
-  internal data class Round(val value: Expr<Number>, val digits: Int) : Expr<Double>()
-  internal class If<V> internal constructor(val condition: Expr<Boolean>, val then: Expr<V>, val otherwise: Expr<V>) :
-    Expr<V>() {
+  internal data class Round(val value: Formula<Number>, val digits: Int) : Formula<Double>()
+  internal class If<V> internal constructor(val condition: Formula<Boolean>, val then: Formula<V>, val otherwise: Formula<V>) :
+    Formula<V>() {
     override fun equals(other: Any?): Boolean =
       other is If<*> && condition == other.condition && then == other.then && otherwise == other.otherwise
 
@@ -100,8 +100,8 @@ class EvaluatedRow internal constructor(private val values: Map<Column<*>, Any?>
 }
 
 /** Formula text without the leading `=`; [data] is the range of data rows for totals. */
-internal fun Expr<*>.toExcel(row: Int, data: IntRange? = null): String = when (this) {
-  is Expr.Ref -> column.reference(row).let {
+internal fun Formula<*>.toExcel(row: Int, data: IntRange? = null): String = when (this) {
+  is Formula.Ref -> column.reference(row).let {
     when (column.kind) {
       ValueKind.Boolean -> "IF($it,TRUE(),FALSE())"
       ValueKind.Text -> "T($it)"
@@ -109,33 +109,33 @@ internal fun Expr<*>.toExcel(row: Int, data: IntRange? = null): String = when (t
     }
   }
 
-  is Expr.Range -> {
+  is Formula.Range -> {
     requireNotNull(data) { "A range only exists in a totals row: $column" }
     "${column.reference(data.first)}:${column.reference(data.last)}"
   }
 
-  is Expr.Constant -> literal(value)
-  is Expr.Text -> "\"${value.replace("\"", "\"\"")}\""
-  is Expr.Bool -> if (value) "TRUE()" else "FALSE()"
-  is Expr.Plus -> binary("+", left, right, row, data)
-  is Expr.Minus -> binary("-", left, right, row, data)
-  is Expr.Times -> binary("*", left, right, row, data)
-  is Expr.Div -> binary("/", left, right, row, data)
-  is Expr.Compare -> binary(comparison.excel, left, right, row, data)
-  is Expr.And -> listOf(left, right).map { it.toExcel(row, data) }.call("AND")
-  is Expr.Or -> listOf(left, right).map { it.toExcel(row, data) }.call("OR")
-  is Expr.Not -> listOf(value.toExcel(row, data)).call("NOT")
-  is Expr.Aggregate -> terms.map {
+  is Formula.Constant -> literal(value)
+  is Formula.Text -> "\"${value.replace("\"", "\"\"")}\""
+  is Formula.Bool -> if (value) "TRUE()" else "FALSE()"
+  is Formula.Plus -> binary("+", left, right, row, data)
+  is Formula.Minus -> binary("-", left, right, row, data)
+  is Formula.Times -> binary("*", left, right, row, data)
+  is Formula.Div -> binary("/", left, right, row, data)
+  is Formula.Compare -> binary(comparison.excel, left, right, row, data)
+  is Formula.And -> listOf(left, right).map { it.toExcel(row, data) }.call("AND")
+  is Formula.Or -> listOf(left, right).map { it.toExcel(row, data) }.call("OR")
+  is Formula.Not -> listOf(value.toExcel(row, data)).call("NOT")
+  is Formula.Aggregate -> terms.map {
     // References passed to an aggregate must stay references: SUM skips Boolean cells.
-    if (it is Expr.Ref) it.column.reference(row) else it.toExcel(row, data)
+    if (it is Formula.Ref) it.column.reference(row) else it.toExcel(row, data)
   }.call(function.excel)
 
-  is Expr.Round -> listOf(value.toExcel(row, data), "$digits").call("ROUND")
-  is Expr.If -> listOf(condition, then, otherwise).map { it.toExcel(row, data) }.call("IF")
+  is Formula.Round -> listOf(value.toExcel(row, data), "$digits").call("ROUND")
+  is Formula.If -> listOf(condition, then, otherwise).map { it.toExcel(row, data) }.call("IF")
 }
 
 /** Evaluate without Excel. Missing columns throw; blanks and spreadsheet errors are preserved. */
-internal fun <V> Expr<V>.evaluate(row: Map<out Column<*>, Any?>): CellResult<V> = cellResult(
+internal fun <V> Formula<V>.evaluate(row: Map<out Column<*>, Any?>): CellResult<V> = cellResult(
   evaluateRaw(
     cell = { column ->
       if (column !in row) throw NoSuchElementException("No value for $column")
@@ -145,18 +145,18 @@ internal fun <V> Expr<V>.evaluate(row: Map<out Column<*>, Any?>): CellResult<V> 
   )
 )
 
-internal fun Expr<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -> RangeSummary): Any? {
-  fun Expr<*>.eval(): Any? = evaluateRaw(cell, range)
-  fun pair(left: Expr<*>, right: Expr<*>, apply: (Any?, Any?) -> Any?): Any? {
+internal fun Formula<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -> RangeSummary): Any? {
+  fun Formula<*>.eval(): Any? = evaluateRaw(cell, range)
+  fun pair(left: Formula<*>, right: Formula<*>, apply: (Any?, Any?) -> Any?): Any? {
     val l = left.eval()
     val r = right.eval()
     return if (l is ExcelError) l else if (r is ExcelError) r else apply(l, r)
   }
 
-  fun numeric(left: Expr<Number>, right: Expr<Number>, apply: (Double, Double) -> Double): Any? =
+  fun numeric(left: Formula<Number>, right: Formula<Number>, apply: (Double, Double) -> Double): Any? =
     pair(left, right) { l, r -> finite(apply(number(l), number(r))) }
   return when (this) {
-    is Expr.Ref -> when (val value = cell(column)) {
+    is Formula.Ref -> when (val value = cell(column)) {
       is ExcelError -> value
       is Number -> finite(value.toDouble())
       null -> when (column.kind) {
@@ -167,34 +167,34 @@ internal fun Expr<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -
       else -> value
     }
 
-    is Expr.Range -> error("A range must be an aggregate operand: $column")
-    is Expr.Constant -> value
-    is Expr.Text -> value
-    is Expr.Bool -> value
-    is Expr.Plus -> numeric(left, right, Double::plus)
-    is Expr.Minus -> numeric(left, right, Double::minus)
-    is Expr.Times -> numeric(left, right, Double::times)
-    is Expr.Div -> pair(left, right) { l, r ->
+    is Formula.Range -> error("A range must be an aggregate operand: $column")
+    is Formula.Constant -> value
+    is Formula.Text -> value
+    is Formula.Bool -> value
+    is Formula.Plus -> numeric(left, right, Double::plus)
+    is Formula.Minus -> numeric(left, right, Double::minus)
+    is Formula.Times -> numeric(left, right, Double::times)
+    is Formula.Div -> pair(left, right) { l, r ->
       if (number(r) == 0.0) ExcelError.DivisionByZero else finite(number(l) / number(r))
     }
 
-    is Expr.Compare -> pair(left, right) { l, r -> comparison.test(compare(l, r)) }
-    is Expr.And -> pair(left, right) { l, r -> l == true && r == true }
-    is Expr.Or -> pair(left, right) { l, r -> l == true || r == true }
-    is Expr.Not -> value.eval().let { if (it is ExcelError) it else it != true }
-    is Expr.Aggregate -> RangeSummary().also { summary ->
+    is Formula.Compare -> pair(left, right) { l, r -> comparison.test(compare(l, r)) }
+    is Formula.And -> pair(left, right) { l, r -> l == true && r == true }
+    is Formula.Or -> pair(left, right) { l, r -> l == true || r == true }
+    is Formula.Not -> value.eval().let { if (it is ExcelError) it else it != true }
+    is Formula.Aggregate -> RangeSummary().also { summary ->
       terms.forEach { term ->
         when (term) {
-          is Expr.Range -> summary.merge(range(term.column))
-          is Expr.Ref -> summary.add(cell(term.column))
-          is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
-          is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not, is Expr.Aggregate, is Expr.Round, is Expr.If ->
+          is Formula.Range -> summary.merge(range(term.column))
+          is Formula.Ref -> summary.add(cell(term.column))
+          is Formula.Constant, is Formula.Text, is Formula.Bool, is Formula.Plus, is Formula.Minus, is Formula.Times, is Formula.Div,
+          is Formula.Compare, is Formula.And, is Formula.Or, is Formula.Not, is Formula.Aggregate, is Formula.Round, is Formula.If ->
             summary.add(term.eval(), direct = true)
         }
       }
     }.result(function)
 
-    is Expr.Round -> when (val evaluated = value.eval()) {
+    is Formula.Round -> when (val evaluated = value.eval()) {
       is ExcelError -> evaluated
       // Excel's useful precision is far below these bounds; avoid huge BigDecimals.
       else if digits > 308 -> number(evaluated)
@@ -202,7 +202,7 @@ internal fun Expr<*>.evaluateRaw(cell: (Column<*>) -> Any?, range: (Column<*>) -
       else -> finite(number(evaluated).toBigDecimal().setScale(digits, RoundingMode.HALF_UP).toDouble())
     }
 
-    is Expr.If -> when (val evaluated = condition.eval()) {
+    is Formula.If -> when (val evaluated = condition.eval()) {
       is ExcelError -> evaluated
       true -> then.eval()
       else -> otherwise.eval()
@@ -270,40 +270,40 @@ internal class RangeSummary {
   }
 }
 
-internal fun Expr<*>.children(): List<Expr<*>> = when (this) {
-  is Expr.Ref, is Expr.Range, is Expr.Constant, is Expr.Text, is Expr.Bool -> emptyList()
-  is Expr.Plus -> listOf(left, right)
-  is Expr.Minus -> listOf(left, right)
-  is Expr.Times -> listOf(left, right)
-  is Expr.Div -> listOf(left, right)
-  is Expr.Compare -> listOf(left, right)
-  is Expr.And -> listOf(left, right)
-  is Expr.Or -> listOf(left, right)
-  is Expr.Not -> listOf(value)
-  is Expr.Aggregate -> terms
-  is Expr.Round -> listOf(value)
-  is Expr.If -> listOf(condition, then, otherwise)
+internal fun Formula<*>.children(): List<Formula<*>> = when (this) {
+  is Formula.Ref, is Formula.Range, is Formula.Constant, is Formula.Text, is Formula.Bool -> emptyList()
+  is Formula.Plus -> listOf(left, right)
+  is Formula.Minus -> listOf(left, right)
+  is Formula.Times -> listOf(left, right)
+  is Formula.Div -> listOf(left, right)
+  is Formula.Compare -> listOf(left, right)
+  is Formula.And -> listOf(left, right)
+  is Formula.Or -> listOf(left, right)
+  is Formula.Not -> listOf(value)
+  is Formula.Aggregate -> terms
+  is Formula.Round -> listOf(value)
+  is Formula.If -> listOf(condition, then, otherwise)
 }
 
-internal fun Expr<*>.references(): List<Expr<*>> =
-  if (this is Expr.Ref || this is Expr.Range) listOf(this) else children().flatMap { it.references() }
+internal fun Formula<*>.references(): List<Formula<*>> =
+  if (this is Formula.Ref || this is Formula.Range) listOf(this) else children().flatMap { it.references() }
 
-internal val Expr<*>.referencedColumn: Column<*>?
+internal val Formula<*>.referencedColumn: Column<*>?
   get() = when (this) {
-    is Expr.Ref -> column
-    is Expr.Range -> column
-    is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
-    is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not, is Expr.Aggregate, is Expr.Round, is Expr.If -> null
+    is Formula.Ref -> column
+    is Formula.Range -> column
+    is Formula.Constant, is Formula.Text, is Formula.Bool, is Formula.Plus, is Formula.Minus, is Formula.Times, is Formula.Div,
+    is Formula.Compare, is Formula.And, is Formula.Or, is Formula.Not, is Formula.Aggregate, is Formula.Round, is Formula.If -> null
   }
 
-internal val Expr<*>.kind: ValueKind
+internal val Formula<*>.kind: ValueKind
   get() = when (this) {
-    is Expr.Ref -> column.kind
-    is Expr.Text -> ValueKind.Text
-    is Expr.Bool, is Expr.Compare, is Expr.And, is Expr.Or, is Expr.Not -> ValueKind.Boolean
-    is Expr.If -> then.kind
-    is Expr.Range, is Expr.Constant, is Expr.Plus, is Expr.Minus, is Expr.Times, is Expr.Div,
-    is Expr.Aggregate, is Expr.Round -> ValueKind.Number
+    is Formula.Ref -> column.kind
+    is Formula.Text -> ValueKind.Text
+    is Formula.Bool, is Formula.Compare, is Formula.And, is Formula.Or, is Formula.Not -> ValueKind.Boolean
+    is Formula.If -> then.kind
+    is Formula.Range, is Formula.Constant, is Formula.Plus, is Formula.Minus, is Formula.Times, is Formula.Div,
+    is Formula.Aggregate, is Formula.Round -> ValueKind.Number
   }
 
 private fun finite(value: Double): Any = if (value.isFinite()) value.flushUnderflow() else ExcelError.Number
@@ -327,16 +327,16 @@ private fun Comparison.test(order: Int): Boolean = when (this) {
   Comparison.NotEqual -> order != 0
 }
 
-private val Expr<*>.precedence: Int
+private val Formula<*>.precedence: Int
   get() = when (this) {
-    is Expr.Compare -> 0
-    is Expr.Plus, is Expr.Minus -> 1
-    is Expr.Times, is Expr.Div -> 2
-    is Expr.Ref, is Expr.Range, is Expr.Constant, is Expr.Text, is Expr.Bool, is Expr.And, is Expr.Or, is Expr.Not,
-    is Expr.Aggregate, is Expr.Round, is Expr.If -> 3
+    is Formula.Compare -> 0
+    is Formula.Plus, is Formula.Minus -> 1
+    is Formula.Times, is Formula.Div -> 2
+    is Formula.Ref, is Formula.Range, is Formula.Constant, is Formula.Text, is Formula.Bool, is Formula.And, is Formula.Or, is Formula.Not,
+    is Formula.Aggregate, is Formula.Round, is Formula.If -> 3
   }
 
-private fun Expr<*>.binary(op: String, left: Expr<*>, right: Expr<*>, row: Int, data: IntRange?): String {
+private fun Formula<*>.binary(op: String, left: Formula<*>, right: Formula<*>, row: Int, data: IntRange?): String {
   val l = left.toExcel(row, data).let { if (left.precedence < precedence) "($it)" else it }
   val r = right.toExcel(row, data).let { if (right.precedence <= precedence) "($it)" else it }
   return "$l$op$r"

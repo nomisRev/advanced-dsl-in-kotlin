@@ -76,7 +76,7 @@ class LayoutTest {
   fun `an explicit width wins`() {
     val sheet = sheet<Invoice> {
       val customer by column(width = 30) { it.customer }
-      val total by formula(width = 4) { Expr.Constant(1.0) }
+      val total by formula(width = 4) { Formula.Constant(1.0) }
       "Hours"(width = 255) { it.hours }
     }
     assertEquals(listOf(30, 4, 255), (0..2).map { sheet.written().getColumnWidth(it) / 256 })

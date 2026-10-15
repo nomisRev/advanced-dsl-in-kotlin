@@ -19,12 +19,12 @@ kodee: wave
 <InlineCompilerError :line="2" text="operator" message="'operator' modifier is not applicable to function: must return 'Int'." style="--inline-compiler-error-message-size: 1.2rem">
 
 ```kotlin
-import presentation.support.tricks.Expr
+import presentation.support.tricks.Formula
 import presentation.support.tricks.Formulas
 
 context(_: Formulas)
-operator fun Column<Number>.compareTo(limit: Double): Expr =
-  Expr.Greater(Expr.Ref(this), Expr.Constant(limit))
+operator fun Column<Number>.compareTo(limit: Double): Formula =
+  Formula.Greater(Formula.Ref(this), Formula.Constant(limit))
 ```
 
 </InlineCompilerError>
@@ -44,12 +44,12 @@ magic-move
 <DrawnAnnotation text="gt" label="A name instead of a symbol" color="var(--fundamentals-blue)" :geometry="{ label: { x: 0.68, y: 0.40 } }" />
 
 ```kotlin
-import presentation.support.tricks.Expr
+import presentation.support.tricks.Formula
 import presentation.support.tricks.Formulas
 
 context(_: Formulas)
-infix fun Column<Number>.gt(limit: Double): Expr =
-  Expr.Greater(Expr.Ref(this), Expr.Constant(limit))
+infix fun Column<Number>.gt(limit: Double): Formula =
+  Formula.Greater(Formula.Ref(this), Formula.Constant(limit))
 ```
 
 ---
@@ -189,13 +189,13 @@ fun exportCustomers(): Column<String> {
 
 > `-Xcontext-sensitive-resolution`
 
-<DrawnAnnotation text="is Ref" label="`Expr.Ref`, found through the sealed type of `this`" :geometry="{ label: { x: 0.66, y: 0.35 } }" />
+<DrawnAnnotation text="is Ref" label="`Formula.Ref`, found through the sealed type of `this`" :geometry="{ label: { x: 0.66, y: 0.35 } }" />
 <DrawnAnnotation text="is Greater" />
 
 ```kotlin
-import presentation.support.tricks.Expr
+import presentation.support.tricks.Formula
 
-fun Expr.toExcel(row: Int): String = when (this) {
+fun Formula.toExcel(row: Int): String = when (this) {
   is Ref -> column.reference(row)
   is Constant -> "$value"
   is Times -> "${left.toExcel(row)}*${right.toExcel(row)}"

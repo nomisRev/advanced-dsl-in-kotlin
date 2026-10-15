@@ -338,13 +338,13 @@ this eliminates backing property boilerplate.
 <InlineCompilerError :line="2" text="operator" message="'operator' modifier is not applicable to function: must return 'Int'." style="--inline-compiler-error-message-size: 1.1rem">
 
 ```kotlin
-import presentation.support.tricks.Expr
+import presentation.support.tricks.Formula
 import presentation.support.tricks.Formulas
 import presentation.support.Column
 
 context(_: Formulas)
-operator fun Column<Number>.compareTo(limit: Double): Expr =
-  Expr.Greater(Expr.Ref(this), Expr.Constant(limit))
+operator fun Column<Number>.compareTo(limit: Double): Formula =
+  Formula.Greater(Formula.Ref(this), Formula.Constant(limit))
 ```
 
 </InlineCompilerError>
@@ -353,7 +353,7 @@ operator fun Column<Number>.compareTo(limit: Double): Expr =
 In Part 4, member extensions allowed overloading `*` and `+` for `Column<Number>` to produce
 formula expressions. But why didn't we overload `>` or `<`?
 In Kotlin, `a > b` compiles to `a.compareTo(b) > 0`. The language hardcodes `compareTo`
-to return `Int`, and `equals` to return `Boolean`. They cannot return an expression node `Expr<Boolean>`.
+to return `Int`, and `equals` to return `Boolean`. They cannot return an expression node `Formula<Boolean>`.
 -->
 
 ---
@@ -363,7 +363,7 @@ to return `Int`, and `equals` to return `Boolean`. They cannot return an express
 > Part 4, after “compareTo cannot build expression AST trees”
 
 <DrawnAnnotation text="infix fun" label="One-argument function called without dot or parentheses" />
-<DrawnAnnotation text="hours gt 40.0" label="Builds `Expr.Greater` instead of evaluating a boolean" color="var(--fundamentals-blue)" />
+<DrawnAnnotation text="hours gt 40.0" label="Builds `Formula.Greater` instead of evaluating a boolean" color="var(--fundamentals-blue)" />
 
 ```kotlin
 import presentation.support.tricks.*
@@ -392,7 +392,7 @@ Infix is not a visual gimmick; it is an architectural necessity in Kotlin for bu
 
 ```kotlin no-compile
 context(excel: Formulas)
-fun Column<Number>.withVat(): Expr = this * 1.21
+fun Column<Number>.withVat(): Formula = this * 1.21
 
 context(eval: Evaluator)
 fun Column<Number>.withVat(): Double = eval.compute(this) * 1.21

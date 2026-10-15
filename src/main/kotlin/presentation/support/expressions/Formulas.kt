@@ -7,28 +7,28 @@ import presentation.support.Column
  * the operators below available, as a context like in Part 5.
  */
 interface Formulas {
-  fun sum(columns: List<Column<Number>>): Expr =
-    Expr.Sum(columns.map(Expr::Ref))
+  fun sum(columns: List<Column<Number>>): Formula =
+    Formula.Sum(columns.map(Formula::Ref))
 }
 
 context(_: Formulas)
-operator fun Expr.times(other: Expr): Expr = Expr.Times(this, other)
+operator fun Formula.times(other: Formula): Formula = Formula.Times(this, other)
 
 context(_: Formulas)
-operator fun Expr.times(factor: Double): Expr = this * Expr.Constant(factor)
+operator fun Formula.times(factor: Double): Formula = this * Formula.Constant(factor)
 
 context(_: Formulas)
-operator fun Expr.times(other: Column<Number>): Expr = this * Expr.Ref(other)
+operator fun Formula.times(other: Column<Number>): Formula = this * Formula.Ref(other)
 
 context(_: Formulas)
-operator fun Column<Number>.times(other: Column<Number>): Expr =
-  Expr.Ref(this) * Expr.Ref(other)
+operator fun Column<Number>.times(other: Column<Number>): Formula =
+  Formula.Ref(this) * Formula.Ref(other)
 
 context(_: Formulas)
-operator fun Column<Number>.times(factor: Double): Expr = Expr.Ref(this) * factor
+operator fun Column<Number>.times(factor: Double): Formula = Formula.Ref(this) * factor
 
 context(_: Formulas)
-operator fun Column<Number>.times(other: Expr): Expr = Expr.Ref(this) * other
+operator fun Column<Number>.times(other: Formula): Formula = Formula.Ref(this) * other
 
 context(_: Formulas)
-fun Column<Number>.withVat(): Expr = this * 1.21
+fun Column<Number>.withVat(): Formula = this * 1.21

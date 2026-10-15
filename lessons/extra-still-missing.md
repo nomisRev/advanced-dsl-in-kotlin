@@ -807,7 +807,7 @@ zoom: 0.75
 | KEEP-0440 ABI validation in the Gradle plugin | Public discussion | `checkKotlinAbi` as the guard for Part 6 |
 | KEEP-0302 binary signature name, PR #503 `@SignatureDiscriminator` | Unknown; the PR is open | A multiplatform `@JvmName` |
 | KEEP-0462 rich errors | Public discussion | A builder could return `Sheet<T> \| InvalidSchema` |
-| KEEP-0409 subtyping reconstruction | Declined | A `when` over `Expr<V>` keeps its casts |
+| KEEP-0409 subtyping reconstruction | Declined | A `when` over `Formula<V>` keeps its casts |
 
 <style>
 .slidev-layout table { font-size: 1.3rem; }

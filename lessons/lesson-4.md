@@ -64,7 +64,7 @@ magic-move
 # The total is a number, not a formula
 
 <DrawnAnnotation text="formula" on="0" />
-<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.7029, y: 0.4449 }, connector: { type: 'quadratic', start: { x: 0.4963, y: 0.4232 }, control: { x: 0.5375, y: 0.4573 }, end: { x: 0.5858, y: 0.4483 } } }"/>
+<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaBuilder`"  :geometry="{ label: { x: 0.7029, y: 0.4449 }, connector: { type: 'quadratic', start: { x: 0.4963, y: 0.4232 }, control: { x: 0.5375, y: 0.4573 }, end: { x: 0.5858, y: 0.4483 } } }"/>
 <DrawnAnnotation text="=B2*C2" />
 
 <DrawnAnnotation text="hours" on="1" />
@@ -96,7 +96,7 @@ magic-move
 # The total is a number, not a formula
 
 <DrawnAnnotation text="formula" on="0" />
-<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaScope`"  :geometry="{ label: { x: 0.6171, y: 0.4457 }, connector: { type: 'quadratic', start: { x: 0.4056, y: 0.4244 }, control: { x: 0.4468, y: 0.4585 }, end: { x: 0.4951, y: 0.4495 } } }"/>
+<DrawnAnnotation text="*" on="0" label="Sub DSL `FormulaBuilder`"  :geometry="{ label: { x: 0.6171, y: 0.4457 }, connector: { type: 'quadratic', start: { x: 0.4056, y: 0.4244 }, control: { x: 0.4468, y: 0.4585 }, end: { x: 0.4951, y: 0.4495 } } }"/>
 
 ```kotlin
 import presentation.support.delegated.generateExcel

@@ -23,9 +23,9 @@ val invoices = sheet<Invoice> {
 invoices.write(Path.of("a-long-report-filename.xlsx"), listOf(Invoice("Ada", 12, 90.0, false)), name = "Invoices")
 ```
 
-Formula expressions carry their result type: arithmetic returns `Expr<Double>`, comparisons
-return `Expr<Boolean>`, and text branches return `Expr<String>`. Numeric branches share
-`Expr<Number>`. Both branches must have the same cell type. Numeric truthiness and Boolean
+Formula expressions carry their result type: arithmetic returns `Formula<Double>`, comparisons
+return `Formula<Boolean>`, and text branches return `Formula<String>`. Numeric branches share
+`Formula<Number>`. Both branches must have the same cell type. Numeric truthiness and Boolean
 arithmetic require explicit `.asBoolean()` and `.asNumber()` conversions.
 
 Arithmetic supports expressions, columns and numeric literals on either side, plus unary
@@ -137,7 +137,7 @@ that policy; caller-provided streams remain open.
 
 ## API migration
 
-- Replace raw `Expr` types with `Expr<Number>`, `Expr<Boolean>`, `Expr<String>` or `Expr<*>`.
+- Replace raw `Formula` types with `Formula<Number>`, `Formula<Boolean>`, `Formula<String>` or `Formula<*>`.
 - Boolean formula columns are `Column<Boolean>`; use `.asNumber()` before arithmetic.
 - Replace numeric conditions with `.asBoolean()` and mixed-type branches with matching types.
 - Use `evaluateTyped` for `CellResult`, or handle `ExcelError` in header maps. Raw map-based

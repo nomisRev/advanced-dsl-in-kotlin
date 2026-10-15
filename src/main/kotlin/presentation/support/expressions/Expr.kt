@@ -9,25 +9,25 @@ import presentation.support.reference
  * rendering it for a row, or evaluating it, is a plain `when`.
  */
 
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
-  data class Times(val left: Expr, val right: Expr) : Expr
-  data class Sum(val terms: List<Expr>) : Expr
+sealed interface Formula {
+  data class Ref(val column: Column<Number>) : Formula
+  data class Constant(val value: Double) : Formula
+  data class Times(val left: Formula, val right: Formula) : Formula
+  data class Sum(val terms: List<Formula>) : Formula
 }
 
 /** The formula text of [row], the 1-based row number Excel shows, without `=`. */
-fun Expr.toExcel(row: Int): String = when (this) {
-  is Expr.Ref -> column.reference(row)
-  is Expr.Constant -> "$value"
-  is Expr.Times -> "${left.toExcel(row)}*${right.toExcel(row)}"
-  is Expr.Sum -> terms.joinToString(", ", "SUM(", ")") { it.toExcel(row) }
+fun Formula.toExcel(row: Int): String = when (this) {
+  is Formula.Ref -> column.reference(row)
+  is Formula.Constant -> "$value"
+  is Formula.Times -> "${left.toExcel(row)}*${right.toExcel(row)}"
+  is Formula.Sum -> terms.joinToString(", ", "SUM(", ")") { it.toExcel(row) }
 }
 
 /** The value of this formula for one row: CSV export, previews, tests. */
-fun Expr.evaluate(row: Map<Column<*>, Number>): Double = when (this) {
-  is Expr.Ref -> row.getValue(column).toDouble()
-  is Expr.Constant -> value
-  is Expr.Times -> left.evaluate(row) * right.evaluate(row)
-  is Expr.Sum -> terms.sumOf { it.evaluate(row) }
+fun Formula.evaluate(row: Map<Column<*>, Number>): Double = when (this) {
+  is Formula.Ref -> row.getValue(column).toDouble()
+  is Formula.Constant -> value
+  is Formula.Times -> left.evaluate(row) * right.evaluate(row)
+  is Formula.Sum -> terms.sumOf { it.evaluate(row) }
 }

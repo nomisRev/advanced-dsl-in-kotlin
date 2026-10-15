@@ -12,6 +12,7 @@ suspend fun main() {
       column("Customer") { it.customer }
       val hours = column("Hours") { it.hours }
       val rate = column("Rate") { it.rate }
+      
       formula("Total") { hours * rate }
     }
   }

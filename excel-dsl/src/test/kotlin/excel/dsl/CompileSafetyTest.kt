@@ -69,7 +69,7 @@ class CompileSafetyTest {
       "val invalid by formula { n then 1 otherwise 0 }",
       "totals { flag.sum() }",
       "val invalid by formula { n eq text }",
-      "val invalid by formula { Expr.Compare(n.ref(), Comparison.Equal, text.ref()) }",
+      "val invalid by formula { Formula.Compare(n.ref(), Comparison.Equal, text.ref()) }",
     )
     cases.forEachIndexed { index, statement ->
       val (exit, message) = compile("Invalid$index", """
@@ -94,7 +94,7 @@ class CompileSafetyTest {
       }
     """)
     assertEquals(ExitCode.COMPILATION_ERROR, exit, message)
-    assertTrue(message.contains("return type mismatch: expected 'Expr<Number>', actual 'Branch<Number>'."), message)
+    assertTrue(message.contains("return type mismatch: expected 'Formula<Number>', actual 'Branch<Number>'."), message)
   }
 
   @Test
@@ -129,9 +129,9 @@ class CompileSafetyTest {
   fun `unsafe expression entry points are internal`() {
     for ((index, expression) in listOf(
       "n.ref().evaluate(mapOf(n to \"wrong\"))",
-      "Expr.Range(n)",
-      "Expr.Constant(1.0)",
-      "Expr.Aggregate(AggregateFunction.Sum, listOf(n.ref()))",
+      "Formula.Range(n)",
+      "Formula.Constant(1.0)",
+      "Formula.Aggregate(AggregateFunction.Sum, listOf(n.ref()))",
     ).withIndex()) {
       val (exit, message) = compile("Internal$index", """
         val schema = sheet<Int> {

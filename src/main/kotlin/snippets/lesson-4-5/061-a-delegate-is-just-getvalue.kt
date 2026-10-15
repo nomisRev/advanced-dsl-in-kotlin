@@ -4,11 +4,14 @@
 package snippets.lesson45.slide61
 
 import presentation.support.*
+import kotlin.reflect.KProperty
 
 val entries = mapOf("one" to 1, "two" to 2)
 
 val one by entries
 
-suspend fun main() {
-    println(entries.getValue(null, ::one))
-}
+operator fun <V> Map<String, V>.getValue(
+  thisRef: Any?,
+  property: KProperty<*>,
+): V = this[property.name]
+  ?: throw NoSuchElementException("Key ${property.name} is missing")

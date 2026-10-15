@@ -354,26 +354,26 @@ so every intermediate result needs its own column.
 
 # Operators build a tree
 
-<DrawnAnnotation text="sealed interface Expr" label="The formula as data, not text"  :geometry="{ label: { x: 0.6083, y: 0.1995 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2187 }, control: { x: 0.3780, y: 0.2364 }, end: { x: 0.4634, y: 0.1993 } } }"/>
+<DrawnAnnotation text="sealed interface Formula" label="The formula as data, not text"  :geometry="{ label: { x: 0.6083, y: 0.1995 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2187 }, control: { x: 0.3780, y: 0.2364 }, end: { x: 0.4634, y: 0.1993 } } }"/>
 <DrawnAnnotation text="context(_: Formulas)" :line="7" label="`_`: nothing reads it, it only gates the call to `formula { }`" :connect="false" :geometry="{ label: { x: 0.585, y: 0.478 } }" />
-<DrawnAnnotation text="Expr.Times(this, Expr.Constant(factor))" label="An `Expr` composes with the next operator" color="var(--fundamentals-pink)" />
+<DrawnAnnotation text="Formula.Times(this, Formula.Constant(factor))" label="An `Formula` composes with the next operator" color="var(--fundamentals-pink)" />
 
 ```kotlin
 import presentation.support.expressions.Formulas
 
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
-  data class Times(val left: Expr, val right: Expr) : Expr
+sealed interface Formula {
+  data class Ref(val column: Column<Number>) : Formula
+  data class Constant(val value: Double) : Formula
+  data class Times(val left: Formula, val right: Formula) : Formula
 }
 
 context(_: Formulas)
-operator fun Column<Number>.times(other: Column<Number>): Expr =
-  Expr.Times(Expr.Ref(this), Expr.Ref(other))
+operator fun Column<Number>.times(other: Column<Number>): Formula =
+  Formula.Times(Formula.Ref(this), Formula.Ref(other))
 
 context(_: Formulas)
-operator fun Expr.times(factor: Double): Expr =
-  Expr.Times(this, Expr.Constant(factor))
+operator fun Formula.times(factor: Double): Formula =
+  Formula.Times(this, Formula.Constant(factor))
 ```
 
 ---
@@ -383,13 +383,13 @@ operator fun Expr.times(factor: Double): Expr =
 <DrawnAnnotation text="when (this)" label="Exhaustive, the tree is sealed"  :geometry="{ label: { x: 0.7996, y: 0.2483 }, connector: { type: 'quadratic', start: { x: 0.5951, y: 0.2204 }, control: { x: 0.6192, y: 0.2450 }, end: { x: 0.6498, y: 0.2484 } } }"/>
 
 ```kotlin
-import presentation.support.expressions.Expr
+import presentation.support.expressions.Formula
 
-fun Expr.toExcel(row: Int): String = when (this) {
-  is Expr.Ref -> column.reference(row)
-  is Expr.Constant -> "$value"
-  is Expr.Times -> "${left.toExcel(row)}*${right.toExcel(row)}"
-  is Expr.Sum -> terms.joinToString(", ", "SUM(", ")") { it.toExcel(row) }
+fun Formula.toExcel(row: Int): String = when (this) {
+  is Formula.Ref -> column.reference(row)
+  is Formula.Constant -> "$value"
+  is Formula.Times -> "${left.toExcel(row)}*${right.toExcel(row)}"
+  is Formula.Sum -> terms.joinToString(", ", "SUM(", ")") { it.toExcel(row) }
 }
 ```
 

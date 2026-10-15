@@ -15,9 +15,9 @@ import presentation.support.writeWorkbook
 
 @ExcelDsl
 class SheetBuilder<T> : DelegatedColumns<T>() {
-  fun formula(block: Formulas.() -> Expr): ColumnDelegate<Number> {
-    val expr = Scope.block()
-    return formulaColumn { row -> Cell.Formula("=${expr.toExcel(row)}") }
+  fun formula(block: Formulas.() -> Formula): ColumnDelegate<Number> {
+    val Formula = Scope.block()
+    return formulaColumn { row -> Cell.Formula("=${Formula.toExcel(row)}") }
   }
 
   /** `"Customer" { it.customer }`: the string is the header. */

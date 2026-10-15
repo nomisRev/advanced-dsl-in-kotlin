@@ -10,27 +10,28 @@ import presentation.support.WorkbookSheets
 import presentation.support.reference
 
 /** The typed expression stage used by Part 2, before delegated columns. */
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Constant(val value: Double) : Expr<Double>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+sealed interface Formula<out T> {
+  data class Ref<T>(val column: Column<T>) : Formula<T>
+  data class Constant(val value: Double) : Formula<Double>
+  data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>
+  data class LessThan(val left: Formula<Number>, val right: Formula<Number>) : Formula<Boolean>
+  data class In<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
+  data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
 }
 
 @ExcelDsl
-class FormulaScope internal constructor() {
-  internal fun times(first: Column<Number>, second: Column<Number>): Expr<Double> =
-    Expr.Times(Expr.Ref(first), Expr.Ref(second))
+class FormulaBuilder internal constructor() {
+  internal fun times(first: Column<Number>, second: Column<Number>): Formula<Double> =
+    Formula.Times(Formula.Ref(first), Formula.Ref(second))
 }
 
-context(scope: FormulaScope)
-operator fun Column<Number>.times(other: Column<Number>): Expr<Double> =
+context(scope: FormulaBuilder)
+operator fun Column<Number>.times(other: Column<Number>): Formula<Double> =
   scope.times(this, other)
 
-context(_: FormulaScope)
-operator fun Expr<Number>.times(other: Double): Expr<Double> =
-  Expr.Times(this, Expr.Constant(other))
+context(_: FormulaBuilder)
+operator fun Formula<Number>.times(other: Double): Formula<Double> =
+  Formula.Times(this, Formula.Constant(other))
 
 private fun literal(value: Any?): String = when (value) {
   is String -> "\"${value.replace("\"", "\"\"")}\""
@@ -39,12 +40,13 @@ private fun literal(value: Any?): String = when (value) {
   else -> error("Unsupported formula literal: $value")
 }
 
-private fun Expr<*>.render(row: Int): String = when (this) {
-  is Expr.Ref -> column.reference(row)
-  is Expr.Constant -> value.toString()
-  is Expr.Times -> "(${left.render(row)}*${right.render(row)})"
-  is Expr.Contains -> "ISNUMBER(SEARCH(${literal(substring)},${target.render(row)}))"
-  is Expr.In<*> -> values.joinToString(",", "OR(", ")") { "${target.render(row)}=${literal(it)}" }
+private fun Formula<*>.render(row: Int): String = when (this) {
+  is Formula.Ref -> column.reference(row)
+  is Formula.Constant -> value.toString()
+  is Formula.Times -> "(${left.render(row)}*${right.render(row)})"
+  is Formula.LessThan -> "${left.render(row)}<${right.render(row)}"
+  is Formula.Contains -> "ISNUMBER(SEARCH(${literal(substring)},${target.render(row)}))"
+  is Formula.In<*> -> values.joinToString(",", "OR(", ")") { "${target.render(row)}=${literal(it)}" }
 }
 
 @ExcelDsl
@@ -59,9 +61,9 @@ class SheetBuilder<T> : SheetColumns<T>() {
   fun column(name: String, value: (T) -> Number): Column<Number> =
     Column(name, addColumn(name) { row, _ -> value(row) })
 
-  fun <V> formula(name: String, block: FormulaScope.() -> Expr<V>): Column<V> {
-    val expr = FormulaScope().block()
-    return Column(name, addColumn(name) { _, row -> Cell.Formula(expr.render(row)) })
+  fun <V> formula(name: String, block: FormulaBuilder.() -> Formula<V>): Column<V> {
+    val Formula = FormulaBuilder().block()
+    return Column(name, addColumn(name) { _, row -> Cell.Formula(Formula.render(row)) })
   }
 }
 

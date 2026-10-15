@@ -4,19 +4,11 @@
 package snippets.lesson2.slide50
 
 import presentation.support.*
-import presentation.support.trees.FormulaScope
+import presentation.support.expressions.Formulas
 
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
+sealed interface Formula<out T> {
+  data class Reference<T>(val column: Column<T>) : Formula<T>
+  data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>
+  data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
+  data class Has<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
 }
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
-context(_: FormulaScope)
-infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)

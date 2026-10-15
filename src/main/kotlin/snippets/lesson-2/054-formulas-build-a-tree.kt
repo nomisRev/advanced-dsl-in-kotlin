@@ -6,20 +6,19 @@ package snippets.lesson2.slide54
 import presentation.support.*
 import presentation.support.trees.*
 
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
-context(_: FormulaScope)
-infix fun <@kotlin.internal.OnlyInputTypes A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
+context(_: FormulaBuilder)
+infix fun <@kotlin.internal.OnlyInputTypes A> Iterable<A>.contains(
+  other: Column<A>
+): Formula<Boolean> = Formula.In(Formula.Ref(other), this)
 
 suspend fun main() {
   workbook("invoices.xlsx") {
     sheet("Q1", q1) {
       val company = column("Customer") { it.customer }
-      formula("GOV") { ["VRT", "VUB"] contains company }
+      formula("one or two") {
+        ["one", "two"] contains company
+      }
     }
   }
 }

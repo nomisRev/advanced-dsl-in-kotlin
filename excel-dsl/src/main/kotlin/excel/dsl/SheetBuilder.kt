@@ -63,17 +63,17 @@ class SheetBuilder<T> @PublishedApi internal constructor(internal val config: Ex
   var autoFilter: Boolean = false
 
   /**
-   * A column Excel computes. [block] runs once, here, and builds an [Expr]
+   * A column Excel computes. [block] runs once, here, and builds an [Formula]
    * that is rendered for every row. It may only reference columns of this sheet.
    */
   fun <V> formula(
     format: CellFormat? = null,
     width: Int? = null,
-    block: context(Formulas) () -> Expr<V>,
+    block: context(Formulas) () -> Formula<V>,
   ): ColumnDelegate<V> {
-    val expr = block(FormulaScope)
+    val expr = block(FormulaBuilder)
     checkOwned(expr)
-    require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
+    require(expr.references().none { it is Formula.Range }) { "A row formula cannot hold a range: $expr" }
     return delegate { header -> add(header, format, width, expr.kind) { ColumnSpec.Formula(it, expr) } }
   }
 
@@ -83,11 +83,11 @@ class SheetBuilder<T> @PublishedApi internal constructor(internal val config: Ex
     name: String,
     format: CellFormat? = null,
     width: Int? = null,
-    block: context(Formulas) () -> Expr<V>,
+    block: context(Formulas) () -> Formula<V>,
   ): Column<V> {
-    val expr = block(FormulaScope)
+    val expr = block(FormulaBuilder)
     checkOwned(expr)
-    require(expr.references().none { it is Expr.Range }) { "A row formula cannot hold a range: $expr" }
+    require(expr.references().none { it is Formula.Range }) { "A row formula cannot hold a range: $expr" }
     return add(name, format, width, expr.kind) { ColumnSpec.Formula(it, expr) }
   }
 
@@ -274,18 +274,18 @@ class SheetBuilder<T> @PublishedApi internal constructor(internal val config: Ex
 
     /** Numeric totals return numbers, text totals text, and Boolean totals booleans. */
     @JvmName("numberTotal")
-    fun Column<Number>.total(block: context(Totals) () -> Expr<Number>): Unit = formulaTotal(this, block)
+    fun Column<Number>.total(block: context(Totals) () -> Formula<Number>): Unit = formulaTotal(this, block)
 
     @JvmName("textTotal")
-    fun Column<String>.total(block: context(Totals) () -> Expr<String>): Unit = formulaTotal(this, block)
+    fun Column<String>.total(block: context(Totals) () -> Formula<String>): Unit = formulaTotal(this, block)
 
     @JvmName("booleanTotal")
-    fun Column<Boolean>.total(block: context(Totals) () -> Expr<Boolean>): Unit = formulaTotal(this, block)
+    fun Column<Boolean>.total(block: context(Totals) () -> Formula<Boolean>): Unit = formulaTotal(this, block)
 
-    private fun formulaTotal(column: Column<*>, block: context(Totals) () -> Expr<*>) {
+    private fun formulaTotal(column: Column<*>, block: context(Totals) () -> Formula<*>) {
       val expr = block(TotalsScope)
       this@SheetBuilder.checkOwned(expr)
-      require(expr.references().none { it is Expr.Ref }) { "A total cannot reference a single row: $expr" }
+      require(expr.references().none { it is Formula.Ref }) { "A total cannot reference a single row: $expr" }
       put(column, TotalSpec.Formula(expr))
     }
 
@@ -337,13 +337,13 @@ class SheetBuilder<T> @PublishedApi internal constructor(internal val config: Ex
     return column
   }
 
-  private fun checkOwned(expr: Expr<*>) {
-    fun validateRanges(node: Expr<*>, aggregateOperand: Boolean = false) {
-      require(node !is Expr.Range || aggregateOperand) { "A range must be an aggregate operand: $node" }
-      node.children().forEach { validateRanges(it, node is Expr.Aggregate) }
+  private fun checkOwned(Formula: Formula<*>) {
+    fun validateRanges(node: Formula<*>, aggregateOperand: Boolean = false) {
+      require(node !is Formula.Range || aggregateOperand) { "A range must be an aggregate operand: $node" }
+      node.children().forEach { validateRanges(it, node is Formula.Aggregate) }
     }
-    validateRanges(expr)
-    val foreign = expr.references().mapNotNull { it.referencedColumn }.filter { it.owner !== this }
+    validateRanges(Formula)
+    val foreign = Formula.references().mapNotNull { it.referencedColumn }.filter { it.owner !== this }
     require(foreign.isEmpty()) { "Formula references columns of another sheet: $foreign" }
   }
 
@@ -365,7 +365,7 @@ internal sealed interface ColumnSpec<in T> {
   class Layout(val column: Column<*>, val format: CellFormat?, val width: Int?)
 
   class Data<T>(override val layout: Layout, val value: (T) -> Any?) : ColumnSpec<T>
-  class Formula(override val layout: Layout, val expr: Expr<*>) : ColumnSpec<Any?>
+  class Formula(override val layout: Layout, val expr: excel.dsl.Formula<*>) : ColumnSpec<Any?>
 }
 
 context(sheet: SheetBuilder<T>)
@@ -444,7 +444,7 @@ fun <T> column(format: CellFormat? = null, width: Int? = null, value: (T) -> Ins
 
 internal sealed interface TotalSpec {
   class Label(val text: String) : TotalSpec
-  class Formula(val expr: Expr<*>) : TotalSpec
+  class Formula(val expr: excel.dsl.Formula<*>) : TotalSpec
 }
 
 /** Excel 2007 and later: 16,384 columns, 1,048,576 rows, 255 characters wide. */

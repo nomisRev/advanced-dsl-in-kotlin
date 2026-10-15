@@ -30,6 +30,13 @@ kodee: welcome
 
 Simon Vergauwen · Developer Advocate, JetBrains
 
+<!--
+- BREATH
+- introduce
+- thank (conf & ivan)
+- welcome
+-->
+
 ---
 layout: intro
 class: section-slide agenda-slide
@@ -39,11 +46,19 @@ kodee: wave
 # Table of contents
 
 1. Scope control
-2. Overloads by lambda return type
-3. Columns as values
-4. Extensions with dynamic dispatch
-5. Context parameters
-6. Cost and evolution
+2. Lambdas & Inference
+3. Extensions & Context Parameters
+4. Fluent DSL
+5. Tips & Tricks 
+
+<!--
+- PREVENT INCORRECT
+- BE PRECISE
+- RESOLUTION
+- TYPES FLOW
+- Party tricks
+-->
+
 
 ---
 src: ./lessons/lesson-1.md

@@ -10,5 +10,5 @@ val entries = mapOf("one" to 1, "two" to 2)
 val one by entries
 
 suspend fun main() {
-    println(one)
+    println(entries.getValue(null, ::one))
 }

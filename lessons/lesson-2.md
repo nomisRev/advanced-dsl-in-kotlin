@@ -414,6 +414,123 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue)
 
 ---
 
+# Context Parameters
+
+```kotlin no-compile
+package excel.dsl
+
+class SheetBuilder<T> internal constructor() {
+  fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
+}
+
+@OverloadResolutionByLambdaReturnType
+context(builder: SheetBuilder<T>)
+fun <T> column(name: String, value: (T) -> String) = builder.add(...)
+```
+```kotlin no-compile
+package my.app.dsl
+
+@OverloadResolutionByLambdaReturnType
+context(builder: SheetBuilder<A>)
+fun <A> column(name: String, transform: (A) -> CellValue) = builder.add(..)
+```
+
+---
+
+# Context Parameters
+
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
+
+```kotlin show-imports no-compile
+import excel.dsl.*
+import my.app.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+---
+
+# Context Parameters
+
+<TypeHint :line="4" receiver="WorkbookBuilder">
+<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
+
+```kotlin show-imports no-compile
+import excel.dsl.*
+import my.app.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+    add(...)
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+---
+
+# Context Parameters
+
+<TypeHint :line="4" context="WorkbookBuilder">
+<TypeHint :line="5" context="SheetBuilder<Invoice>">
+<InlineCompilerError text="add" message="Unresolved reference `add`" >
+
+```kotlin show-imports no-compile
+import excel.dsl.*
+import my.app.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+    add(...)
+  }
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+
+---
+
+# Context Parameters
+
+<TypeHint :line="4" context="WorkbookBuilder">
+<TypeHint :line="5" context="SheetBuilder<Invoice>">
+<DrawnAnnotation text="contextOf" label="Get instance of `context(FormulaBuilder)`" />
+
+```kotlin show-imports no-compile
+import excel.dsl.*
+import my.app.dsl.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    column("custom") { it.customCell }
+    contextOf<FormulaBuilder>().add(...)
+  }
+}
+```
+
+</TypeHint>
+</TypeHint>
+
+---
+
 # The total is a number, not a formula
 
 <DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
@@ -580,9 +697,31 @@ workbook("invoices.xlsx") {
 
 ---
 
+# Mutable DSL vs Fluent DSL
+
+<DrawnAnnotation text="Unit" on="0" label="No output 'mutates' `SheetBuilder`"  :geometry="{ label: { x: 0.6574, y: 0.3204 } }"/>
+<DrawnAnnotation text="Formula" on="1" occurrence="2" label="Produces or computes a `Formula`" />
+
 ```kotlin no-compile
-class FormulaScope internal constructor() {
-  internal fun times(first: Column<Number>, second: Column<Number>): Expr
+context(builder: WorkbookBuilder)
+fun <A> sheet(block: context(SheetBuilder<A>) () -> Unit): Sheet<A>
+
+context(builder: SheetBuilder<*>)
+fun formula(block: context(FormulaBuilder) () -> Formula): Formula
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="sealed interface Formula" label="The formula as data"  :geometry="{ label: { x: 0.5033, y: 0.1930 }, connector: { type: 'quadratic', start: { x: 0.3258, y: 0.2230 }, control: { x: 0.3724, y: 0.2283 }, end: { x: 0.4051, y: 0.2040 } } }"/>
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Formula {
+  data class Reference(val column: Column<Number>) : Formula
+  data class Times(val left: Formula, val right: Formula) : Formula
 }
 ```
 
@@ -590,23 +729,72 @@ class FormulaScope internal constructor() {
 magic-move
 ---
 
-```kotlin no-compile
-class FormulaScope internal constructor() {
-  internal fun times(first: Column<Number>, second: Column<Number>): Expr
+# Formulas build a tree
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Formula {
+  data class Reference(val column: Column<Number>) : Formula
+  data class Times(val left: Formula, val right: Formula) : Formula
 }
 
-context(formulas: FormulaScope)
-operator fun Column<Number>.times(second: Column<Number>): Expr =
-  formulas.times(this, second)
+operator fun Column<Number>.times(other: Column<Number>): Formula =
+  Formula.Times(Formula.Reference(this), Formula.Reference(other))
+```
+
+---
+magic-move
+---
+
+# Formulas build a tree
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Formula {
+  data class Reference(val column: Column<Number>) : Formula
+  data class Times(val left: Formula, val right: Formula) : Formula
+}
+
+context(_: FormulaBuilder)
+operator fun Column<Number>.times(other: Column<Number>): Formula =
+  Formula.Times(Formula.Reference(this), Formula.Reference(other))
+
+class FormulaBuilder internal constructor()
+```
+
+---
+magic-move
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="internal" />
+<DrawnAnnotation text="internal" occurrence="2" label="Force users through the DSL"  :geometry="{ label: { x: 0.3404, y: 0.3595 } }"/>
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Formula {
+  data class Reference internal constructor(val column: Column<Number>) : Formula
+  data class Times internal constructor(val left: Formula, val right: Formula) : Formula
+}
+
+context(_: FormulaBuilder)
+operator fun Column<Number>.times(other: Column<Number>): Formula =
+  Formula.Times(Formula.Reference(this), Formula.Reference(other))
+
+class FormulaBuilder internal constructor()
 ```
 
 ---
 
 # The total is a number, not a formula
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="6" receiver="FormulaScope">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaBuilder">
 
 ```kotlin
 import presentation.support.trees.*
@@ -632,11 +820,13 @@ workbook("invoices.xlsx") {
 
 ---
 
-# The total is a number, not a formula
+# Operator with required return types
 
 <TypeHint :line="1" context="WorkbookBuilder">
 <TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaScope">
+<TypeHint :line="6" context="FormulaBuilder">
+<TypeHint :line="7" context="FormulaBuilder">
+<InlineCompilerError text="<" message="Unresolved reference `compareTo` on receiver of type `Column<Long>`">
 
 ```kotlin
 import presentation.support.trees.*
@@ -647,39 +837,7 @@ workbook("invoices.xlsx") {
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
     formula("Total") { hours * rate }
-  }
-}
-```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-```console
-| Customer | Hours | Rate | Total  |
-| Ada      | 12    | 90   | =B2*C2 |
-```
-
----
-
-# The total is a number, not a formula
-
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaScope">
-<InlineCompilerError text="times" message="TODO">
-
-```kotlin
-import presentation.support.trees.*
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    val hours = column("Hours") { it.hours }
-    val rate = column("Rate") { it.rate }
-    formula("Total") {
-      times(hours, rate)
-    }
+    formula("Full Day") { hours < 8.hours } 
   }
 }
 ```
@@ -688,20 +846,22 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 </TypeHint>
+</TypeHint>
 
 ```console
-| Customer | Hours | Rate | Total  |
-| Ada      | 12    | 90   | =B2*C2 |
+| Customer | Hours | Rate | Total  | Under 8 hours |
+| Ada      | 12    | 90   | =B2*C2 | =B2<8.0       |
 ```
 
 ---
 
-# The total is a number, not a formula
+# Operator with required return types
 
 <TypeHint :line="1" context="WorkbookBuilder">
 <TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaScope">
-<DrawnAnnotation text="contextOf<FormulaScope>().times" label="Explicitly get instance of `context(FormulaScope)`, and call a method on it"  :geometry="{ label: { x: 0.5107, y: 0.5793 } }"/>
+<TypeHint :line="6" context="FormulaBuilder">
+<TypeHint :line="7" context="FormulaBuilder">
+<InlineCompilerError text="<" message="Unresolved reference `compareTo` non receiver of type `Column<Long>`" style="--inline-compiler-error-message-size: 1.5rem">
 
 ```kotlin
 import presentation.support.trees.*
@@ -711,240 +871,166 @@ workbook("invoices.xlsx") {
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") {
-      contextOf<FormulaScope>().times(hours, rate)
-    }
+    formula("Total") { hours * rate }
+    formula("Full Day") { hours < 8.hours } 
   }
 }
-```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-```console
-| Customer | Hours | Rate | Total  |
-| Ada      | 12    | 90   | =B2*C2 |
-```
-
----
-
-- Receiver can resolve context
-- Context cannot be used as receiver, or `this`
-
-```kotlin
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-
-val ctx: context(CoroutineScope) () -> Job = {
-  val scope = contextOf<CoroutineScope>()
-  scope.launch { }
-}
-
-val receiver: CoroutineScope.() -> Job = {
-  val scope = this
-  launch { }
-}
-```
-
----
-
-# Fluent DSL vs Mutable DSL
-
-```kotlin no-compile
-fun formula(block: context(FormulaScope) () -> Expr): Formula
-
-fun worksheet(block: context(WorkbookBuilder) () -> Unit): Workbook
-```
-
----
-
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaScope">
-
-```kotlin
-import presentation.support.trees.*
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    val hours = column("Hours") { it.hours }
-    val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate * 1.21 }
-  }
-}
-```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-```console
-| Customer | Hours | Rate | Total  |
-| Ada      | 12    | 90   | =B2*C2*1.21 |
-```
-
----
-
-# Formulas build a tree
-
-<DrawnAnnotation text="sealed interface Expr" label="The formula as data"  :geometry="{ label: { x: 0.4684, y: 0.1929 }, connector: { type: 'quadratic', start: { x: 0.2919, y: 0.2222 }, control: { x: 0.3385, y: 0.2275 }, end: { x: 0.3712, y: 0.2032 } } }"/>
-
-```kotlin
-import presentation.support.expressions.Formulas
-
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
-  data class Times(val left: Expr, val right: Expr) : Expr
-}
-```
-
----
-
-# Formulas build a tree
-
-<DrawnAnnotation text="context(_: FormulaScope)" :line="7" label="`_:` nothing reads it, it requires `formula { }` to call it" on="0" :geometry="{ label: { x: 0.6449, y: 0.4447 }, connector: { type: 'quadratic', start: { x: 0.3271, y: 0.5048 }, control: { x: 0.3700, y: 0.5085 }, end: { x: 0.3881, y: 0.4748 } } }" />
-<DrawnAnnotation text="Times(Ref(this), Ref(other))" />
-
-```kotlin
-import presentation.support.trees.FormulaScope
-
-import presentation.support.expressions.Formulas
-
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
-  data class Times(val left: Expr, val right: Expr) : Expr
-}
-
-context(_: FormulaScope)
-operator fun Column<Number>.times(other: Column<Number>): Expr =
-  Expr.Times(Expr.Ref(this), Expr.Ref(other))
-```
-
----
-
-# Formulas build a tree
-
-<DrawnAnnotation text="FormulaScope" occurrence="2" label="Purely a marker type for scope control, has no functionality"  :geometry="{ label: { x: 0.4037, y: 0.8100 }, connector: { type: 'quadratic', start: { x: 0.2229, y: 0.7491 }, control: { x: 0.2239, y: 0.7680 }, end: { x: 0.2229, y: 0.7912 } } }"/>
-
-```kotlin
-import presentation.support.expressions.Formulas
-
-sealed interface Expr {
-  data class Ref(val column: Column<Number>) : Expr
-  data class Constant(val value: Double) : Expr
-  data class Times(val left: Expr, val right: Expr) : Expr
-}
-
-context(_: FormulaScope)
-operator fun Column<Number>.times(other: Column<Number>): Expr =
-  Expr.Times(Expr.Ref(this), Expr.Ref(other))
-
-@ExcelDsl
-class FormulaScope internal constructor()
-```
-
----
-
-# Formulas build a tree
-
-```kotlin
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
-}
-```
-
----
-
-# Formulas build a tree
-
-<InlineCompilerError text="operator" message="`operator` modifier is not applicable to function: must return `Boolean`.">
-
-```kotlin
-import presentation.support.trees.FormulaScope
-
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
-}
-
-context(_: FormulaScope)
-operator fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
 ```
 
 </InlineCompilerError>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+</TypeHint>
 
----
-
-# Formulas build a tree
-
-```kotlin
-import presentation.support.trees.FormulaScope
-
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
-}
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
+```console
+| Customer | Hours | Rate | Total  | Under 8 hours |
+| Ada      | 12    | 90   | =B2*C2 | =B2<8.0       |
 ```
 
 ---
 
-# Formulas build a tree
+# Operator with required return types
 
-```kotlin
-import presentation.support.trees.FormulaScope
-
-sealed interface Expr<out T> {
-  data class Ref<T>(val column: Column<T>) : Expr<T>
-  data class Times(val left: Expr<Number>, val right: Expr<Number>) : Expr<Double>
-  data class In<T>(val target: Expr<T>, val values: Iterable<T>) : Expr<Boolean>
-  data class Contains(val target: Expr<String>, val substring: String) : Expr<Boolean>
-}
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
-context(_: FormulaScope)
-infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
-```
-
----
-
-# Formulas build a tree
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaBuilder">
+<TypeHint :line="7" context="FormulaBuilder">
+<InlineCompilerError text="<" message="Unresolved reference `compareTo`\non receiver of type `Column<Long>`" style="--inline-compiler-error-message-size: 1.5rem">
+<InlineCompilerError text="operator" message="`operator` modifier is not applicable to function: must return `Int`">
 
 ```kotlin
 import presentation.support.trees.*
 
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+    formula("Full Day") { hours < 8.hours } 
+  }
+}
 
-context(_: FormulaScope)
-infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
+context(_: FormulaBuilder)
+operator fun Column<Long>
+  .compareTo(other: Column<Long>): Formula = TODO()
+```
+
+</InlineCompilerError>
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  | Under 8 hours |
+| Ada      | 12    | 90   | =B2*C2 | =B2<8.0       |
+```
+
+---
+
+# Operator with required return types
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaBuilder">
+<TypeHint :line="7" context="FormulaBuilder">
+
+```kotlin
+import presentation.support.trees.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+    formula("Under 8 hours") { hours lessThan 8 }
+  }
+}
+
+context(_: FormulaBuilder)
+infix fun Column<Number>.lessThan(other: Number): Formula<Boolean> =
+  Formula.LessThan(Formula.Ref(this), Formula.Constant(other.toDouble()))
+```
+
+</TypeHint>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  | Under 8 hours |
+| Ada      | 12    | 90   | =B2*C2 | =B2<8.0       |
+```
+
+---
+
+# Operators with strict return type
+
+ - `operator fun <A> A.compareTo(other: A): Int`
+   - `<`, `>`, `<=`, `=>`, `==`, `!==`
+ - `operator fun <A> A.contains(other: A): Boolean`
+   - `in`
+ 
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="<out T>" label="Cover different types of formulas"  :geometry="{ label: { x: 0.6306, y: 0.1292 }, connector: { type: 'quadratic', start: { x: 0.4010, y: 0.2208 }, control: { x: 0.4515, y: 0.2230 }, end: { x: 0.4791, y: 0.1502 } } }"/>
+
+```kotlin
+import presentation.support.expressions.Formulas
+
+sealed interface Formula<out T> {
+  data class Reference<T>(val column: Column<T>) : Formula<T>
+  data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>
+  data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
+  data class Has<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
+}
+```
+
+---
+
+# Formulas build a tree
+
+```kotlin
+import presentation.support.trees.FormulaBuilder
+
+sealed interface Formula<out T> {
+  data class Reference<T>(val column: Column<T>) : Formula<T>
+  data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>
+  data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
+  data class Has<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
+}
+
+context(_: FormulaBuilder)
+infix fun <A> Iterable<A>.contains(other: Column<A>): Formula<Boolean> =
+  Formula.Has(Formula.Reference(other), this)
+```
+
+---
+
+# Formulas build a tree
+
+<DrawnAnnotation text="<A>" color="red"/>
+<DrawnAnnotation text="<A>" occurrence="2" color="red"/>
+<DrawnAnnotation text="<A>" occurrence="3" color="red"/>
+<DrawnAnnotation text="[1, 2] contains customer" label="Infers `Any` for `A`" color="red"/>
+
+```kotlin
+import presentation.support.trees.*
+
+context(_: FormulaBuilder)
+infix fun <A> Iterable<A>.contains(other: Column<A>): Formula<Boolean> =
+  Formula.In(Formula.Ref(other), this)
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     val customer = column("Customer") { it.customer }
-    formula("GOV") { customer contains "-GOV" }
+    formula("one or two") { [1, 2] contains customer }
   }
 }
 ```
@@ -953,49 +1039,23 @@ workbook("invoices.xlsx") {
 
 # Formulas build a tree
 
-<DrawnAnnotation text="[1, 2] contains company" label="Infers `Any` for `A`" color="red"/>
+<InlineCompilerError text="company" :line="11" message="Argument type mismatch: actual type is 'Column<String>', but 'Column<Int>' was expected.">
 
 ```kotlin
 import presentation.support.trees.*
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
-context(_: FormulaScope)
-infix fun <A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    val company = column("Customer") { it.customer }
-    formula("GOV") { [1, 2] contains company }
-  }
-}
-```
-
----
-
-# Formulas build a tree
-
-<InlineCompilerError text="contains" :line="12" message="Type inference failed. The value of the type parameter 'A' must be mentioned in input types (argument types, receiver type, or expected type). Try to specify it explicitly.">
-
-```kotlin
-import presentation.support.trees.*
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
 
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
-context(_: FormulaScope)
-infix fun <@kotlin.internal.OnlyInputTypes A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
+context(_: FormulaBuilder)
+infix fun <@kotlin.internal.Exact A> Iterable<A>.contains(
+  other: Column<A>
+): Formula<Boolean> = Formula.In(Formula.Ref(other), this)
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     val company = column("Customer") { it.customer }
-    formula("GOV") { [1, 2] contains company }
+    formula("one or two") {
+      [1, 2] contains company
+    }
   }
 }
 ```
@@ -1009,49 +1069,18 @@ workbook("invoices.xlsx") {
 ```kotlin
 import presentation.support.trees.*
 
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
-context(_: FormulaScope)
-infix fun <@kotlin.internal.OnlyInputTypes A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
+context(_: FormulaBuilder)
+infix fun <@kotlin.internal.Exact A> Iterable<A>.contains(
+  other: Column<A>
+): Formula<Boolean> = Formula.In(Formula.Ref(other), this)
 
 workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     val company = column("Customer") { it.customer }
-    formula("GOV") { ["VRT", "VUB"] contains company }
+    formula("one or two") {
+      ["one", "two"] contains company
+    }
   }
 }
 ```
-
----
-
-# Formulas build a tree
-
-<InlineCompilerError text="contains" occurrence="2" message="Type inference failed. The value of the type parameter A must be mentioned in input types.">
-
-```kotlin
-import presentation.support.trees.*
-
-context(_: FormulaScope)
-infix fun Column<String>.contains(other: String): Expr<Boolean> =
-  Expr.Contains(Expr.Ref(this), other)
-
-@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
-context(_: FormulaScope)
-infix fun <@kotlin.internal.OnlyInputTypes A> Iterable<A>.contains(other: Column<A>): Expr<Boolean> =
-  Expr.In(Expr.Ref(other), this)
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    val company = column("Customer") { it.customer }
-    formula("GOV") { [1, 2] contains company }
-  }
-}
-```
-
-</InlineCompilerError>
-
----

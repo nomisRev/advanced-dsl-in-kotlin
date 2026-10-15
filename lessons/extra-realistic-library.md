@@ -434,7 +434,7 @@ generateExcel("invoices.xlsx", invoices) {
 
 <!--
 `==` has to return Boolean and `compareTo` has to return Int, so none of these can be
-an operator. Comparisons return `Expr<Boolean>`. Arithmetic requires the explicit
+an operator. Comparisons return `Formula<Boolean>`. Arithmetic requires the explicit
 `asNumber()` conversion, which writes TRUE as 1 and FALSE as 0.
 -->
 
@@ -444,7 +444,7 @@ an operator. Comparisons return `Expr<Boolean>`. Arithmetic requires the explici
 
 > Extra “DSL tricks”, after “`infix` reads like the formula”
 
-<DrawnAnnotation text="then" label="Returns a `Branch`, not an `Expr`"  :geometry="{ label: { x: 0.4720, y: 0.6289 }, connector: { type: 'quadratic', start: { x: 0.2950, y: 0.5764 }, control: { x: 0.2967, y: 0.6197 }, end: { x: 0.3156, y: 0.6280 } } }"/>
+<DrawnAnnotation text="then" label="Returns a `Branch`, not an `Formula`"  :geometry="{ label: { x: 0.4720, y: 0.6289 }, connector: { type: 'quadratic', start: { x: 0.2950, y: 0.5764 }, control: { x: 0.2967, y: 0.6197 }, end: { x: 0.3156, y: 0.6280 } } }"/>
 <DrawnAnnotation text="otherwise" label="Only `otherwise` finishes the `IF`" color="var(--fundamentals-blue)" />
 
 <TypeHint :line="1" receiver="SheetBuilder<Invoice>">
@@ -480,11 +480,11 @@ infix call, so the branches need no parentheses.
 magic-move
 ---
 
-# A `Branch` is not an `Expr`
+# A `Branch` is not an `Formula`
 
 > Extra “DSL tricks”, after “`infix` reads like the formula”
 
-<InlineCompilerError :line="6" text="amount gt 1000 then amount * 0.9" message="Return type mismatch: expected 'Expr<Number>', actual 'Branch<Number>'.">
+<InlineCompilerError :line="6" text="amount gt 1000 then amount * 0.9" message="Return type mismatch: expected 'Formula<Number>', actual 'Branch<Number>'.">
 
 ```kotlin
 import excel.dsl.*
@@ -660,20 +660,20 @@ explicit when a count is placed under a text or Boolean data column.
 
 ```kotlin no-compile
 @JvmName("numberTotal")
-fun Column<Number>.total(block: context(Totals) () -> Expr<Number>)
+fun Column<Number>.total(block: context(Totals) () -> Formula<Number>)
 
 @JvmName("textTotal")
-fun Column<String>.total(block: context(Totals) () -> Expr<String>)
+fun Column<String>.total(block: context(Totals) () -> Formula<String>)
 
 @JvmName("booleanTotal")
-fun Column<Boolean>.total(block: context(Totals) () -> Expr<Boolean>)
+fun Column<Boolean>.total(block: context(Totals) () -> Formula<Boolean>)
 ```
 
 <!--
 These are members of TotalsBuilder. A number column cannot accept a Boolean total,
 and a text column cannot accept a numeric formula through total. The deliberately
 named label and countNonBlank operations still allow a label or count under any
-column. There is no public Column<*>.total returning Expr<*> escape hatch.
+column. There is no public Column<*>.total returning Formula<*> escape hatch.
 -->
 
 ---
@@ -682,7 +682,7 @@ column. There is no public Column<*>.total returning Expr<*> escape hatch.
 
 > Part 5, after “Context parameter or receiver?”
 
-<DrawnAnnotation text="context(_: Arithmetic)" label="`Expr` arithmetic: rows and totals" />
+<DrawnAnnotation text="context(_: Arithmetic)" label="`Formula` arithmetic: rows and totals" />
 <DrawnAnnotation text="context(_: Formulas)" label="Columns as operands: rows only" color="var(--fundamentals-blue)" />
 <DrawnAnnotation text="fun sum(column: Column<Number>)" label="A whole column: totals only" />
 
@@ -690,20 +690,20 @@ column. There is no public Column<*>.total returning Expr<*> escape hatch.
 sealed interface Arithmetic
 sealed interface Formulas : Arithmetic
 sealed interface Totals : Arithmetic {
-  fun sum(column: Column<Number>): Expr<Double>
+  fun sum(column: Column<Number>): Formula<Double>
 }
 
 context(_: Arithmetic)
-operator fun Expr<Number>.times(other: Number): Expr<Double>
+operator fun Formula<Number>.times(other: Number): Formula<Double>
 
 context(_: Formulas)
-operator fun Column<Number>.times(other: Number): Expr<Double>
+operator fun Column<Number>.times(other: Number): Formula<Double>
 ```
 
 <!--
 In a totals row, `B7` would be the totals row itself. So a total may only see whole
 columns, and a row formula may only see its own row. Both share everything that works
-on an `Expr`: arithmetic, `round`, comparisons, `then`/`otherwise`, and user helpers
+on an `Formula`: arithmetic, `round`, comparisons, `then`/`otherwise`, and user helpers
 written against `Arithmetic`.
 -->
 
@@ -715,7 +715,7 @@ magic-move
 
 > Part 5, after “Context parameter or receiver?”
 
-<InlineCompilerError :line="5" text="hours" occurrence="2" message="Argument type mismatch: actual type is 'Column<Number>', but 'Expr<Number>' was expected.">
+<InlineCompilerError :line="5" text="hours" occurrence="2" message="Argument type mismatch: actual type is 'Column<Number>', but 'Formula<Number>' was expected.">
 
 ```kotlin
 import excel.dsl.*
@@ -732,8 +732,8 @@ generateExcel("invoices.xlsx", invoices) {
 </InlineCompilerError>
 
 <!--
-`round(Column)` is a member of `Formulas`, not of `Totals`. Only `round(Expr)` from
-`Arithmetic` is in scope, and a column is not an `Expr`.
+`round(Column)` is a member of `Formulas`, not of `Totals`. Only `round(Formula)` from
+`Arithmetic` is in scope, and a column is not an `Formula`.
 -->
 
 ---
@@ -746,12 +746,12 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="Range" :line="3" color="var(--fundamentals-blue)" />
 
 ```kotlin no-compile
-sealed class Expr<out V> private constructor() {
-  internal data class Ref<V>(val column: Column<V>) : Expr<V>()
-  internal data class Range(val column: Column<*>) : Expr<Nothing>()
+sealed class Formula<out V> private constructor() {
+  internal data class Ref<V>(val column: Column<V>) : Formula<V>()
+  internal data class Range(val column: Column<*>) : Formula<Nothing>()
 }
 
-internal fun Expr<*>.toExcel(row: Int, data: IntRange? = null): String = when (this) {
+internal fun Formula<*>.toExcel(row: Int, data: IntRange? = null): String = when (this) {
   is Ref -> column.reference(row)
   is Range -> {
     requireNotNull(data) { "A range only exists in a totals row: $column" }

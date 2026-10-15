@@ -99,12 +99,12 @@ class TypedApiTest {
 
   @Test
   fun `aggregate snapshots prevent changes and ownership bypass`() {
-    val terms = mutableListOf<Expr<*>>(Expr.Constant(1.0))
+    val terms = mutableListOf<Formula<*>>(Formula.Constant(1.0))
     lateinit var foreign: Column<Number>
     sheet<Int> { foreign = "Foreign" { it } }
-    val aggregate = Expr.Aggregate(AggregateFunction.Sum, terms)
+    val aggregate = Formula.Aggregate(AggregateFunction.Sum, terms)
     val schema = sheet<Int> { val n by column { it }; val total by formula { aggregate } }
-    terms[0] = Expr.Ref(foreign)
+    terms[0] = Formula.Ref(foreign)
     assertEquals(1.0, schema.evaluate(7)["Total"])
     assertFailsWith<UnsupportedOperationException> { (aggregate.terms as MutableList).clear() }
     assertExcelAgrees(schema, listOf(7))

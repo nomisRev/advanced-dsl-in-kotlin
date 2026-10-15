@@ -191,7 +191,7 @@ class TotalsTest {
     assertFailsWith<IllegalArgumentException> {
       sheet<Invoice> {
         val hours by column { it.hours }
-        totals { hours.total { Expr.Ref(hours) } }
+        totals { hours.total { Formula.Ref(hours) } }
       }
     }
   }
@@ -201,7 +201,7 @@ class TotalsTest {
     assertFailsWith<IllegalArgumentException> {
       sheet<Invoice> {
         val hours by column { it.hours }
-        val broken by formula { Expr.Range(hours) }
+        val broken by formula { Formula.Range(hours) }
       }
     }
   }
