@@ -14,7 +14,7 @@ kodee: wave
 
 ------
 
-# The total is a number, not a formula
+# We name every column twice
 
 <DrawnAnnotation text="hours" />
 <DrawnAnnotation text="&quot;Hours&quot;" />
@@ -42,7 +42,7 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# Columns become values we can reference
+# `by` takes the column name from the property
 
 <DrawnAnnotation text="val hours by column" label="The header comes from the property name" on="0" :geometry="{ label: { x: 0.6922, y: 0.3436 }, connector: { type: 'quadratic', start: { x: 0.3205, y: 0.3631 }, control: { x: 0.4562, y: 0.3739 }, end: { x: 0.4784, y: 0.3532 } } }"/>
 
@@ -104,7 +104,7 @@ inline fun workbook(
 
 ---
 
-# A delegate is just `getValue`
+# Reading the property calls `getValue`
 
 <DrawnAnnotation text="by" label="Delegate the property to _entries_"  :geometry="{ label: { x: 0.3717, y: 0.3136 }, connector: { type: 'quadratic', start: { x: 0.1526, y: 0.2732 }, control: { x: 0.1695, y: 0.3128 }, end: { x: 0.2104, y: 0.3115 } } }"/>
 
@@ -122,7 +122,7 @@ println(one)
 magic-move
 ---
 
-# A delegate is just `getValue`
+# Reading the property calls `getValue`
 
 <DrawnAnnotation text="entries.getValue(null, ::one)" label="What the compiler generates for every read of `one`"  :geometry="{ label: { x: 0.6336, y: 0.3123, width: 0.4015 }, connector: { type: 'quadratic', start: { x: 0.4714, y: 0.3625 }, control: { x: 0.5023, y: 0.3609 }, end: { x: 0.5210, y: 0.3266 } } }"/>
 
@@ -140,7 +140,7 @@ println(entries.getValue(null, ::one))
 magic-move
 ---
 
-# A delegate is just `getValue`
+# Reading the property calls `getValue`
 
 <DrawnAnnotation text="operator fun" />
 <DrawnAnnotation text="this[property.name]" label="`entries[&quot;one&quot;]`"  :geometry="{ label: { x: 0.5422, y: 0.4392 }, connector: { type: 'quadratic', start: { x: 0.3485, y: 0.5043 }, control: { x: 0.4089, y: 0.5058 }, end: { x: 0.4646, y: 0.4570 } } }"/>
@@ -212,7 +212,7 @@ class SheetBuilder<T> {
 magic-move
 ---
 
-# Registering in `getValue` is too late
+# Registering on every read duplicates columns
 
 <DrawnAnnotation text="ReadOnlyProperty { _: Any?, property ->" label="Runs on every read, or never" color="red" on="0" :geometry="{ label: { x: 0.7570, y: 0.6074 }, connector: { type: 'quadratic', start: { x: 0.7514, y: 0.4243 }, control: { x: 0.7695, y: 0.4922 }, end: { x: 0.7508, y: 0.5844 } } }" />
 <DrawnAnnotation text="columns.add(column)" label="Not idempotent but might be called 0 or many times" color="red" on="1" :geometry="{ label: { x: 0.3306, y: 0.6230 }, connector: { type: 'quadratic', start: { x: 0.2057, y: 0.5139 }, control: { x: 0.2026, y: 0.5474 }, end: { x: 0.2001, y: 0.5913 } } }"/>
@@ -236,7 +236,7 @@ class SheetBuilder<T> {
 magic-move
 ---
 
-# `PropertyDelegateProvider` runs at the `by`
+# `provideDelegate` registers the column once
 
 <DrawnAnnotation text="PropertyDelegateProvider { _: Any?, property ->" label="Runs once, when `by column { }` is evaluated\nOptimised away by compiler" on="0" :geometry="{ label: { x: 0.7276, y: 0.3589 }, connector: { type: 'quadratic', start: { x: 0.6300, y: 0.4576 }, control: { x: 0.6548, y: 0.4533 }, end: { x: 0.6618, y: 0.4118 } } }"/>
 <DrawnAnnotation text="ReadOnlyProperty { _: Any?, _ -> column }" label="Every read returns the registered column" on="1" :geometry="{ label: { x: 0.4175, y: 0.6770 } }"/>
@@ -289,7 +289,7 @@ with full; the consumer enables check or full. This is a warning, not an error.
 magic-move
 ---
 
-# `by` consumes the delegate
+# `by` triggers registration
 
 <DrawnAnnotation text="val customer by column" />
 <TypeHint :line="1" context="SheetBuilder<Invoice>">

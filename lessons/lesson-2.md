@@ -309,6 +309,8 @@ fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue): C
 magic-move
 ---
 
+# `add` registers a typed column
+
 ```kotlin no-compile
 class SheetBuilder<T> {
   fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
@@ -318,6 +320,8 @@ class SheetBuilder<T> {
 ---
 magic-move
 ---
+
+# `internal` hides the builder’s implementation
 
 <DrawnAnnotation text="internal" />
 <DrawnAnnotation text="internal" occurrence="2" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.3491, y: 0.2754 }, connector: { type: 'quadratic', start: { x: 0.1444, y: 0.1931 }, control: { x: 0.1484, y: 0.2454 }, end: { x: 0.1756, y: 0.2737 } } }"/>
@@ -331,6 +335,8 @@ class SheetBuilder<T> internal constructor() {
 ---
 magic-move
 ---
+
+# DSL as extensions
 
 ```kotlin no-compile
 package excel.dsl
@@ -352,6 +358,8 @@ fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate): Column<Lo
 ---
 magic-move
 ---
+
+# Resolution priority
 
 <InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
 <TypeHint :line="3" receiver="WorkbookBuilder">
@@ -378,6 +386,8 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) =
 ---
 magic-move
 ---
+
+# Resolution priority
 
 <TypeHint :line="4" receiver="WorkbookBuilder">
 <TypeHint :line="5" receiver="SheetBuilder<Invoice>">
@@ -408,7 +418,7 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue)
 
 ---
 
-# Context Parameters
+# A context parameter frees the receiver
 
 ```kotlin no-compile
 package excel.dsl
@@ -431,7 +441,7 @@ fun <A> column(name: String, transform: (A) -> CellValue) = builder.add(..)
 
 ---
 
-# Context Parameters
+# Users can add their own `column` overloads
 
 <TypeHint :line="4" receiver="WorkbookBuilder">
 <TypeHint :line="5" receiver="SheetBuilder<Invoice>">
@@ -453,7 +463,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# Context Parameters
+# A receiver brings its members into scope
 
 <TypeHint :line="4" receiver="WorkbookBuilder">
 <TypeHint :line="5" receiver="SheetBuilder<Invoice>">
@@ -476,7 +486,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# Context Parameters
+# A context parameter does not bring members into scope
 
 <TypeHint :line="4" context="WorkbookBuilder">
 <TypeHint :line="5" context="SheetBuilder<Invoice>">
@@ -501,7 +511,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# Context Parameters
+# Context members remain accessible explicitly
 
 <TypeHint :line="4" context="WorkbookBuilder">
 <TypeHint :line="5" context="SheetBuilder<Invoice>">
@@ -525,7 +535,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# DslMarker closes the context
+# `@DslMarker` restricts context access too
 
 <TypeHint :line="1" context="WorkbookBuilder">
 <TypeHint :line="2" context="SheetBuilder<Invoice>">
@@ -551,7 +561,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# The total is a number, not a formula
+# Kotlin computes the value before Excel sees it
 
 <DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
 <TypeHint :line="1" context="WorkbookBuilder">
@@ -584,7 +594,7 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# The total is a number, not a formula
+# A column reference gives us something to compose
 
 <DrawnAnnotation text="val hours" />
 <DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.3015, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1626, y: 0.4156 }, control: { x: 0.1647, y: 0.4559 }, end: { x: 0.1638, y: 0.5042 } } }"/>
@@ -616,7 +626,7 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# The total is a number, not a formula
+# Column multiplication needs an operator
 
 <InlineCompilerError :line="7" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
 <TypeHint :line="1" context="WorkbookBuilder">
@@ -649,7 +659,7 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# The total is a number, not a formula
+# `formula` brings column operators into scope
 
 <TypeHint :line="1" context="WorkbookBuilder">
 <TypeHint :line="2" context="SheetBuilder<Invoice>">
@@ -682,7 +692,7 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# The total is a number, not a formula
+# Column operators stay inside `formula`
 
 <InlineCompilerError :line="9" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
 <TypeHint :line="1" context="WorkbookBuilder">
@@ -732,7 +742,7 @@ fun formula(block: context(FormulaBuilder) () -> Formula): Formula
 
 ---
 
-# Formulas build a tree
+# A formula is data
 
 <DrawnAnnotation text="sealed interface Formula" label="The formula as data"  :geometry="{ label: { x: 0.5033, y: 0.1930 }, connector: { type: 'quadratic', start: { x: 0.3258, y: 0.2230 }, control: { x: 0.3724, y: 0.2283 }, end: { x: 0.4051, y: 0.2040 } } }"/>
 
@@ -749,7 +759,7 @@ sealed interface Formula {
 magic-move
 ---
 
-# Formulas build a tree
+# Multiplication builds a node in the tree
 
 ```kotlin
 import presentation.support.expressions.Formulas
@@ -767,7 +777,7 @@ operator fun Column<Number>.times(other: Column<Number>): Formula =
 magic-move
 ---
 
-# Formulas build a tree
+# The operator requires a formula context
 
 ```kotlin
 import presentation.support.expressions.Formulas
@@ -788,7 +798,7 @@ class FormulaBuilder internal constructor()
 magic-move
 ---
 
-# Formulas build a tree
+# Internal constructors keep node creation inside the library
 
 <DrawnAnnotation text="internal" />
 <DrawnAnnotation text="internal" occurrence="2" label="Force users through the DSL"  :geometry="{ label: { x: 0.3404, y: 0.3595 } }"/>
