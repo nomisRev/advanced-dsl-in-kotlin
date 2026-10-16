@@ -74,7 +74,8 @@ class Sheet<in T> internal constructor(
    * [rows] is pulled once per call, one row at a time; [output] is left open.
    */
   fun write(output: OutputStream, rows: Sequence<T>, name: String = DEFAULT_NAME) {
-    workbook { sheet(name, this@Sheet, rows) }.write(output)
+    TODO()
+//    workbook { sheet(name, this@Sheet, rows) }.write(output)
   }
 
   fun write(output: OutputStream, rows: Iterable<T>, name: String = DEFAULT_NAME) {

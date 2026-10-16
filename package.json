@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "slidev",
     "build": "slidev build",
+    "present": "node scripts/serve.mjs",
+    "test:remote": "node scripts/test-remote.mjs",
+    "test:remote-restart": "node scripts/test-remote-restart.mjs",
     "export": "slidev export",
     "screenshot": "slidev export --format png",
     "snippets": "slidev-kotlin-snippets && slidev-kotlin-snippets extras.md && slidev-kotlin-snippets lesson-0.md",

@@ -8,7 +8,7 @@ kodee: wave
 
 <div class="lesson-number">Part 2</div>
 
-# Overloads by lambda return type
+# Overloading lambdas
 
 ## Let the cell type pick the function
 
@@ -93,9 +93,7 @@ return type is the only difference between the candidates. So it gives up.
 
 # The lambda picks the overload
 
-<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" label="Signals to compiler to analyse the lambda first, then choose overload" on="0" :geometry="{ label: { x: 0.6961, y: 0.2900, width: 0.5675 }, connector: { type: 'quadratic', start: { x: 0.4930, y: 0.4577 }, control: { x: 0.6056, y: 0.4634 }, end: { x: 0.6530, y: 0.3433 } } }"/>
-<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" occurrence="2" on="0"/>
-<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" occurrence="3" on="0"/>
+<DrawnAnnotation text="@OverloadResolutionByLambdaReturnType" label="Signals to compiler to analyse the lambda first, then choose overload" on="0" :geometry="{ label: { x: 0.7522, y: 0.2653, width: 0.5675 }, connector: { type: 'quadratic', start: { x: 0.4964, y: 0.3639 }, control: { x: 0.5590, y: 0.3731 }, end: { x: 0.5886, y: 0.3190 } } }"/>
 <DrawnAnnotation text="@file:OptIn(ExperimentalTypeInference::class)" on="1" />
 
 ```kotlin no-compile
@@ -107,9 +105,7 @@ import kotlin.experimental.ExperimentalTypeInference
 class SheetBuilder<T> {
   @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> String)
-  @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> Number)
-  @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> LocalDate)
 }
 ```
@@ -129,9 +125,7 @@ class SheetBuilder<T> {
     
   )
   
-  @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> Number)
-  @OverloadResolutionByLambdaReturnType
   fun column(name: String, value: (T) -> LocalDate)
 }
 ```
@@ -153,10 +147,10 @@ class SheetBuilder<T> {
   @OverloadResolutionByLambdaReturnType
   @JvmName("textColumn")
   fun column(name: String, value: (T) -> String)
-  @OverloadResolutionByLambdaReturnType
+  
   @JvmName("numberColumn")
   fun column(name: String, value: (T) -> Number)
-  @OverloadResolutionByLambdaReturnType
+  
   @JvmName("dateColumn")
   fun column(name: String, value: (T) -> LocalDate)
 }
@@ -511,7 +505,7 @@ workbook("invoices.xlsx") {
 
 <TypeHint :line="4" context="WorkbookBuilder">
 <TypeHint :line="5" context="SheetBuilder<Invoice>">
-<DrawnAnnotation text="contextOf" label="Get instance of `context(FormulaBuilder)`" />
+<DrawnAnnotation text="contextOf" label="Get instance of `context(SheetBuilder<Invoice>)`" />
 
 ```kotlin show-imports no-compile
 import excel.dsl.*
@@ -521,7 +515,7 @@ workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     column("Customer") { it.customer }
     column("custom") { it.customCell }
-    contextOf<FormulaBuilder>().add(...)
+    contextOf<SheetBuilder<Invoice>>().add(...)
   }
 }
 ```
@@ -560,8 +554,8 @@ workbook("invoices.xlsx") {
 # The total is a number, not a formula
 
 <DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.trees.*
@@ -594,8 +588,8 @@ magic-move
 
 <DrawnAnnotation text="val hours" />
 <DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.3015, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1626, y: 0.4156 }, control: { x: 0.1647, y: 0.4559 }, end: { x: 0.1638, y: 0.5042 } } }"/>
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.trees.*
@@ -625,8 +619,8 @@ magic-move
 # The total is a number, not a formula
 
 <InlineCompilerError :line="7" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.trees.*
@@ -657,9 +651,9 @@ magic-move
 
 # The total is a number, not a formula
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" receiver="FormulaBuilder">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="7" context="FormulaBuilder">
 
 ```kotlin
 import presentation.support.trees.*
@@ -691,9 +685,9 @@ magic-move
 # The total is a number, not a formula
 
 <InlineCompilerError :line="9" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" receiver="FormulaBuilder">
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="7" context="FormulaBuilder">
 
 ```kotlin
 import presentation.support.trees.*
@@ -835,6 +829,76 @@ workbook("invoices.xlsx") {
 }
 ```
 
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaBuilder">
+<InlineCompilerError text="*" :line="8" message="No context argument for `builder: FormulaBuilder` found.">
+
+```kotlin
+import presentation.support.trees.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+    
+    hours * rate
+  }
+}
+```
+
+</InlineCompilerError>
+</TypeHint>
+</TypeHint>
+</TypeHint>
+
+```console
+| Customer | Hours | Rate | Total  |
+| Ada      | 12    | 90   | =B2*C2 |
+```
+
+---
+
+# The total is a number, not a formula
+
+<TypeHint :line="1" context="WorkbookBuilder">
+<TypeHint :line="2" context="SheetBuilder<Invoice>">
+<TypeHint :line="6" context="FormulaBuilder">
+<InlineCompilerError text="*" :line="8" message="No context argument for `builder: FormulaBuilder` found.">
+
+```kotlin
+import presentation.support.trees.*
+
+workbook("invoices.xlsx") {
+  sheet("Q1", q1) {
+    column("Customer") { it.customer }
+    val hours = column("Hours") { it.hours }
+    val rate = column("Rate") { it.rate }
+    formula("Total") { hours * rate }
+    
+    hours * rate
+  }
+}
+
+
+```
+
+</InlineCompilerError>
 </TypeHint>
 </TypeHint>
 </TypeHint>

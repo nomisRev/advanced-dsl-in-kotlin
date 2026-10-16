@@ -265,7 +265,7 @@ class SheetBuilder<T> {
 > Consumer: `-Xreturn-value-checker=check`
 
 <Warning :line="2" text="column" message="Unused return value of 'column'.">
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="1" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -292,7 +292,7 @@ magic-move
 # `by` consumes the delegate
 
 <DrawnAnnotation text="val customer by column" />
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
+<TypeHint :line="1" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
