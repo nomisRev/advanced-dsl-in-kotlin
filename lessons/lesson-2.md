@@ -211,7 +211,7 @@ fun SheetBuilder<Invoice>.invoice() {
 magic-move
 ---
 
-# Every column has a cell type
+# Extend a library DSL
 
 <InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
 <TypeHint :line="1" receiver="WorkbookBuilder">
@@ -241,7 +241,7 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Colum
 magic-move
 ---
 
-# Every column has a cell type
+# Extend a library DSL
 
 <InlineCompilerError :line="8" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
 <TypeHint :line="1" receiver="WorkbookBuilder">
@@ -276,7 +276,7 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Colum
 magic-move
 ---
 
-# An extension with its own name adds a type
+# An extension with its own name
 
 <DrawnAnnotation text="cellColumn" label="Disambiguate using function name"  :geometry="{ label: { x: 0.3719, y: 0.5203 }, connector: { type: 'quadratic', start: { x: 0.1774, y: 0.4697 }, control: { x: 0.1759, y: 0.5044 }, end: { x: 0.2005, y: 0.5166 } } }"/>
 <DrawnAnnotation text="cellColumn" :occurrence="2" />
@@ -309,7 +309,7 @@ fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue): C
 magic-move
 ---
 
-# `add` registers a typed column
+# Rethinking receiver
 
 ```kotlin no-compile
 class SheetBuilder<T> {
@@ -321,14 +321,13 @@ class SheetBuilder<T> {
 magic-move
 ---
 
-# `internal` hides the builder’s implementation
+# Rethinking receiver
 
-<DrawnAnnotation text="internal" />
-<DrawnAnnotation text="internal" occurrence="2" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.3491, y: 0.2754 }, connector: { type: 'quadratic', start: { x: 0.1444, y: 0.1931 }, control: { x: 0.1484, y: 0.2454 }, end: { x: 0.1756, y: 0.2737 } } }"/>
+<DrawnAnnotation text="internal" label="Lock things down; easier to evolve."  :geometry="{ label: { x: 0.4590, y: 0.3684 }, connector: { type: 'quadratic', start: { x: 0.3558, y: 0.2292 }, control: { x: 0.3497, y: 0.2831 }, end: { x: 0.3587, y: 0.3426 } } }" />
 
 ```kotlin no-compile
 class SheetBuilder<T> internal constructor() {
-  internal fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
+  fun <V> add(name: String, value: (T) -> ColumnSpec<V>): Column<V>
 }
 ```
 
@@ -348,10 +347,8 @@ class SheetBuilder<T> internal constructor() {
 @OverloadResolutionByLambdaReturnType
 fun <T> SheetBuilder<T>.column(name: String, value: (T) -> String): Column<String>
 
-@OverloadResolutionByLambdaReturnType
 fun <T> SheetBuilder<T>.column(name: String, value: (T) -> Number): Column<Number>
 
-@OverloadResolutionByLambdaReturnType
 fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate): Column<LocalDate>
 ```
 
@@ -407,7 +404,7 @@ workbook("invoices.xlsx") {
 </TypeHint>
 </TypeHint>
 
-<DrawnAnnotation text="SheetBuilder" on="1" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3180, y: 0.8144 }, connector: { type: 'quadratic', start: { x: 0.2213, y: 0.7456 }, control: { x: 0.2399, y: 0.7637 }, end: { x: 0.2340, y: 0.7921 } } }"/>
+<DrawnAnnotation text="SheetBuilder" on="1" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3848, y: 0.8805 }, connector: { type: 'quadratic', start: { x: 0.2053, y: 0.8303 }, control: { x: 0.2005, y: 0.8679 }, end: { x: 0.2180, y: 0.8804 } } }"/>
 
 ```kotlin no-compile
 package my.app.dsl
@@ -418,7 +415,7 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue)
 
 ---
 
-# A context parameter frees the receiver
+# Context parameter free the receiver
 
 ```kotlin no-compile
 package excel.dsl
@@ -463,7 +460,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# A receiver brings its members into scope
+# Receivers bring their members into scope
 
 <TypeHint :line="4" receiver="WorkbookBuilder">
 <TypeHint :line="5" receiver="SheetBuilder<Invoice>">
@@ -486,7 +483,7 @@ workbook("invoices.xlsx") {
 
 ---
 
-# A context parameter does not bring members into scope
+# Context doens't bring members into scope
 
 <TypeHint :line="4" context="WorkbookBuilder">
 <TypeHint :line="5" context="SheetBuilder<Invoice>">
@@ -515,7 +512,7 @@ workbook("invoices.xlsx") {
 
 <TypeHint :line="4" context="WorkbookBuilder">
 <TypeHint :line="5" context="SheetBuilder<Invoice>">
-<DrawnAnnotation text="contextOf" label="Get instance of `context(SheetBuilder<Invoice>)`" />
+<DrawnAnnotation text="contextOf" label="Get instance of `context(SheetBuilder<Invoice>)`"  :geometry="{ label: { x: 0.3405, y: 0.7005 }, connector: { type: 'quadratic', start: { x: 0.1629, y: 0.5595 }, control: { x: 0.1649, y: 0.6145 }, end: { x: 0.1629, y: 0.6799 } } }"/>
 
 ```kotlin show-imports no-compile
 import excel.dsl.*
@@ -594,10 +591,10 @@ workbook("invoices.xlsx") {
 magic-move
 ---
 
-# A column reference gives us something to compose
+# Column reference compose
 
 <DrawnAnnotation text="val hours" />
-<DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.3015, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1626, y: 0.4156 }, control: { x: 0.1647, y: 0.4559 }, end: { x: 0.1638, y: 0.5042 } } }"/>
+<DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.2830, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1625, y: 0.4188 }, control: { x: 0.1637, y: 0.4624 }, end: { x: 0.1637, y: 0.5074 } } }"/>
 <TypeHint :line="1" context="WorkbookBuilder">
 <TypeHint :line="2" context="SheetBuilder<Invoice>">
 
@@ -798,7 +795,7 @@ class FormulaBuilder internal constructor()
 magic-move
 ---
 
-# Internal constructors keep node creation inside the library
+# Enforce DSL usage
 
 <DrawnAnnotation text="internal" />
 <DrawnAnnotation text="internal" occurrence="2" label="Force users through the DSL"  :geometry="{ label: { x: 0.3404, y: 0.3595 } }"/>
@@ -881,43 +878,6 @@ workbook("invoices.xlsx") {
 | Customer | Hours | Rate | Total  |
 | Ada      | 12    | 90   | =B2*C2 |
 ```
-
----
-
-# The total is a number, not a formula
-
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<InlineCompilerError text="*" :line="8" message="No context argument for `builder: FormulaBuilder` found.">
-
-```kotlin
-import presentation.support.trees.*
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    val hours = column("Hours") { it.hours }
-    val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
-    
-    hours * rate
-  }
-}
-
-
-```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-```console
-| Customer | Hours | Rate | Total  |
-| Ada      | 12    | 90   | =B2*C2 |
-```
-
 ---
 
 # Operator with required return types
@@ -927,41 +887,6 @@ workbook("invoices.xlsx") {
 <TypeHint :line="6" context="FormulaBuilder">
 <TypeHint :line="7" context="FormulaBuilder">
 <InlineCompilerError text="<" message="Unresolved reference `compareTo` on receiver of type `Column<Long>`">
-
-```kotlin
-import presentation.support.trees.*
-
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
-    val hours = column("Hours") { it.hours }
-    val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
-    formula("Full Day") { hours < 8.hours } 
-  }
-}
-```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
-```console
-| Customer | Hours | Rate | Total  | Under 8 hours |
-| Ada      | 12    | 90   | =B2*C2 | =B2<8.0       |
-```
-
----
-
-# Operator with required return types
-
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<TypeHint :line="7" context="FormulaBuilder">
-<InlineCompilerError text="<" message="Unresolved reference `compareTo` non receiver of type `Column<Long>`" style="--inline-compiler-error-message-size: 1.5rem">
 
 ```kotlin
 import presentation.support.trees.*
@@ -1070,10 +995,13 @@ infix fun Column<Number>.lessThan(other: Number): Formula<Boolean> =
 
 # Operators with strict return type
 
- - `operator fun <A> A.compareTo(other: A): Int`
-   - `<`, `>`, `<=`, `=>`, `==`, `!==`
- - `operator fun <A> A.contains(other: A): Boolean`
-   - `in`
+ - `<`, `>`, `<=`, `=>`, `==`, `!==`
+ - `in`, `!in`
+ - `==`, `!=`
+ - `+=`, `-=`, `*=`, `/=`, `%/`
+ - `[..] = ...`
+ - `value++`, `value--`
+ - `for(v in value)`
  
 ---
 
@@ -1146,7 +1074,7 @@ import presentation.support.trees.*
 
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
 context(_: FormulaBuilder)
-infix fun <@kotlin.internal.Exact A> Iterable<A>.contains(
+infix fun <A> Iterable<@kotlin.internal.Exact A>.contains(
   other: Column<A>
 ): Formula<Boolean> = Formula.In(Formula.Ref(other), this)
 
@@ -1171,7 +1099,7 @@ import presentation.support.trees.*
 
 @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "ERROR_SUPPRESSION")
 context(_: FormulaBuilder)
-infix fun <@kotlin.internal.Exact A> Iterable<A>.contains(
+infix fun <A> Iterable<@kotlin.internal.Exact A>.contains(
   other: Column<A>
 ): Formula<Boolean> = Formula.In(Formula.Ref(other), this)
 

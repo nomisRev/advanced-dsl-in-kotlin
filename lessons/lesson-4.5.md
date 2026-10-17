@@ -316,16 +316,38 @@ also counts as using it, so the checker cannot prove every provider is bound by 
 
 ---
 
+# Warnings as errors
+
+> `-Xwarning-level=RETURN_VALUE_NOT_USED:error`
+
+<InlineCompilerError :line="2" text="column" message="Unused return value of 'column'.">
+<TypeHint :line="1" context="SheetBuilder<Invoice>">
+
+```kotlin
+import presentation.support.delegated.generateExcel
+
+generateExcel("invoices.xlsx", invoices) {
+  column { it.customer }
+  val hours by column { it.hours }
+}
+```
+
+</TypeHint>
+</InlineCompilerError>
+
+---
+
 # `full` exports the return-value check
 
 > Library: `full` · Consumer: `check` or `full`
 
-<DrawnAnnotation text='"-Xreturn-value-checker=full"' label="The library exports the checking metadata" />
-
 ```kotlin gradle
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xreturn-value-checker=full")
+    freeCompilerArgs.addAll(
+      "-Xreturn-value-checker=full",
+      "-Xwarning-level=RETURN_VALUE_NOT_USED:error"
+    )
   }
 }
 ```

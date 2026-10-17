@@ -46,10 +46,10 @@ kodee: wave
 # Table of contents
 
 1. Scope control
-2. Lambdas & Inference
+2. Types and resolution
 3. Extensions & Context Parameters
-4. Fluent DSL
-5. Tips & Tricks 
+4. Different DSLs
+5. Delegation
 
 <!--
 - PREVENT INCORRECT

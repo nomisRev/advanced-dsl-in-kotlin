@@ -4,17 +4,15 @@
 package snippets.lesson2.slide52
 
 import presentation.support.*
-import presentation.support.trees.*
+import presentation.support.trees.FormulaBuilder
+
+sealed interface Formula<out T> {
+  data class Reference<T>(val column: Column<T>) : Formula<T>
+  data class Times(val left: Formula<Number>, val right: Formula<Number>) : Formula<Double>
+  data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
+  data class Has<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
+}
 
 context(_: FormulaBuilder)
 infix fun <A> Iterable<A>.contains(other: Column<A>): Formula<Boolean> =
-  Formula.In(Formula.Ref(other), this)
-
-suspend fun main() {
-  workbook("invoices.xlsx") {
-    sheet("Q1", q1) {
-      val customer = column("Customer") { it.customer }
-      formula("one or two") { [1, 2] contains customer }
-    }
-  }
-}
+  Formula.Has(Formula.Reference(other), this)

@@ -4,7 +4,7 @@
 package snippets.lesson2.slide51
 
 import presentation.support.*
-import presentation.support.trees.FormulaBuilder
+import presentation.support.expressions.Formulas
 
 sealed interface Formula<out T> {
   data class Reference<T>(val column: Column<T>) : Formula<T>
@@ -12,7 +12,3 @@ sealed interface Formula<out T> {
   data class Contains(val target: Formula<String>, val substring: String) : Formula<Boolean>
   data class Has<T>(val target: Formula<T>, val values: Iterable<T>) : Formula<Boolean>
 }
-
-context(_: FormulaBuilder)
-infix fun <A> Iterable<A>.contains(other: Column<A>): Formula<Boolean> =
-  Formula.Has(Formula.Reference(other), this)
