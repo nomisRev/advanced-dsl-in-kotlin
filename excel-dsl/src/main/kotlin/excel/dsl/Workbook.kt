@@ -37,18 +37,24 @@ class WorkbookBuilder @PublishedApi internal constructor() {
    * @throws IllegalArgumentException when [name] is not a valid Excel sheet
    *   name, or is already used, ignoring case as Excel does.
    */
-  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Sequence<T>) {
+  internal fun <T> add(name: String, sheet: Sheet<T>, rows: Sequence<T>) {
     checkSheetName(name)
     require(sheets.none { it.name.equals(name, ignoreCase = true) }) { "Duplicate sheet name: $name" }
     sheets += Workbook.Entry(name, sheet, rows)
   }
 
-  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Iterable<T>) {
-    sheet(name, sheet, rows.asSequence())
-  }
-
   @PublishedApi
   internal fun build(): Workbook = Workbook(sheets.toList())
+}
+
+context(builder: WorkbookBuilder)
+fun <T> sheet(name: String, sheet: Sheet<T>, rows: Sequence<T>) {
+  builder.add(name, sheet, rows)
+}
+
+context(_: WorkbookBuilder)
+fun <T> sheet(name: String, sheet: Sheet<T>, rows: Iterable<T>) {
+  sheet(name, sheet, rows.asSequence())
 }
 
 /**
@@ -61,5 +67,8 @@ class WorkbookBuilder @PublishedApi internal constructor() {
  * }
  * ```
  */
-inline fun workbook(block: context(WorkbookBuilder) () -> Unit): Workbook =
-  WorkbookBuilder().apply(block).build()
+inline fun workbook(block: context(WorkbookBuilder) () -> Unit): Workbook {
+  val builder = WorkbookBuilder()
+  block(builder)
+  return builder.build()
+}

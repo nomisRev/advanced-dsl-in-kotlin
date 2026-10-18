@@ -46,19 +46,30 @@ suspend fun FlowWorkbook.write(path: Path, vararg options: OpenOption) {
 @ExcelDsl
 class FlowWorkbookBuilder @PublishedApi internal constructor() {
   private val sheets = mutableListOf<FlowWorkbook.Entry<*>>()
-  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Flow<T>) {
+  internal fun <T> add(name: String, sheet: Sheet<T>, rows: Flow<T>) {
     checkSheetName(name)
     require(sheets.none { it.name.equals(name, ignoreCase = true) }) { "Duplicate sheet name: $name" }
     sheets += FlowWorkbook.Entry(name, sheet, rows)
   }
 
-  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Sequence<T>) = sheet(name, sheet, rows.asFlow())
-  fun <T> sheet(name: String, sheet: Sheet<T>, rows: Iterable<T>) = sheet(name, sheet, rows.asFlow())
-
   @PublishedApi
   internal fun build(): FlowWorkbook = FlowWorkbook(sheets.toList())
 }
 
+context(builder: FlowWorkbookBuilder)
+fun <T> sheet(name: String, sheet: Sheet<T>, rows: Flow<T>) {
+  builder.add(name, sheet, rows)
+}
+
+context(_: FlowWorkbookBuilder)
+fun <T> sheet(name: String, sheet: Sheet<T>, rows: Sequence<T>) = sheet(name, sheet, rows.asFlow())
+
+context(_: FlowWorkbookBuilder)
+fun <T> sheet(name: String, sheet: Sheet<T>, rows: Iterable<T>) = sheet(name, sheet, rows.asFlow())
+
 /** Composes sheets of different row types, using flows, sequences or lists. */
-inline fun flowWorkbook(block: FlowWorkbookBuilder.() -> Unit): FlowWorkbook =
-  FlowWorkbookBuilder().apply(block).build()
+inline fun flowWorkbook(block: context(FlowWorkbookBuilder) () -> Unit): FlowWorkbook {
+  val builder = FlowWorkbookBuilder()
+  block(builder)
+  return builder.build()
+}

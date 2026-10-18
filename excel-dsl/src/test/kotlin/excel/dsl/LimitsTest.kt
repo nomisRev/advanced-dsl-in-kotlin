@@ -8,10 +8,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class LimitsTest {
-  private fun <V> write(value: () -> V, block: SheetBuilder<Invoice>.(() -> V) -> Unit) =
+  private fun <V> write(value: () -> V, block: context(SheetBuilder<Invoice>) (() -> V) -> Unit) =
     sheet<Invoice> { block(value) }.writeToBytes()
 
-  private fun failure(block: SheetBuilder<Invoice>.() -> Unit): String? =
+  private fun failure(block: context(SheetBuilder<Invoice>) () -> Unit): String? =
     assertFailsWith<IllegalArgumentException> { sheet(block = block).writeToBytes() }.message
 
   @Test

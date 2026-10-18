@@ -28,7 +28,7 @@ inline fun <T> generateExcel(
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
   vararg options: OpenOption,
-  block: SheetBuilder<T>.() -> Unit,
+  block: context(SheetBuilder<T>) () -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   sheet(config, block).write(Path(path), rows, name, *options)
@@ -41,7 +41,7 @@ suspend inline fun <T> generateExcel(
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
   vararg options: OpenOption,
-  block: SheetBuilder<T>.() -> Unit,
+  block: context(SheetBuilder<T>) () -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   sheet(config, block).write(Path(path), rows, name, *options)
@@ -54,7 +54,7 @@ inline fun <T> generateExcel(
   config: ExcelConfig = ExcelConfig.Default,
   name: String = Path(path).nameWithoutExtension,
   vararg options: OpenOption,
-  block: SheetBuilder<T>.() -> Unit,
+  block: context(SheetBuilder<T>) () -> Unit,
 ) {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   generateExcel(path, rows.asSequence(), config, name, *options, block = block)

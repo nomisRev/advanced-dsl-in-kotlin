@@ -14,7 +14,8 @@ enum class Status { Paid, Open }
 value class Money(val cents: Long)
 
 /** How users add a type of their own: an extension with its own name, mapping to a supported type. */
-fun <T> SheetBuilder<T>.money(value: (T) -> Money?): ColumnDelegate<Number> =
+context(_: SheetBuilder<T>)
+fun <T> money(value: (T) -> Money?): ColumnDelegate<Number> =
   column(CellFormat.currency("€")) { row -> value(row)?.let { it.cents.toBigDecimal().movePointLeft(2) } }
 
 class CellTypesTest {

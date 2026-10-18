@@ -165,7 +165,7 @@ class SheetBuilderTest {
     lateinit var builder: SheetBuilder<Invoice>
     val sheet = sheet<Invoice> {
       val hours by column { it.hours }
-      builder = this
+      builder = contextOf<SheetBuilder<Invoice>>()
     }
     with(builder) { "Rate" { it.rate } }
     assertEquals(listOf("Hours"), sheet.headers)

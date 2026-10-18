@@ -65,6 +65,7 @@ class Sheet<in T> internal constructor(
     }
   }
 
+  fun totals(rows: Iterable<T>): Map<String, Any?> = totals(rows.asSequence())
 
   /** Values, blanks and errors, indexed by typed column handles. */
   fun evaluateTyped(row: T): EvaluatedRow = EvaluatedRow(evaluateRow(row))
@@ -74,8 +75,7 @@ class Sheet<in T> internal constructor(
    * [rows] is pulled once per call, one row at a time; [output] is left open.
    */
   fun write(output: OutputStream, rows: Sequence<T>, name: String = DEFAULT_NAME) {
-    TODO()
-//    workbook { sheet(name, this@Sheet, rows) }.write(output)
+    workbook { sheet(name, this@Sheet, rows) }.write(output)
   }
 
   fun write(output: OutputStream, rows: Iterable<T>, name: String = DEFAULT_NAME) {

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.io.TempDir
 class CompileSafetyTest {
   @TempDir lateinit var dir: Path
 
-  private fun compile(name: String, body: String): Pair<ExitCode, String> {
+  private fun compile(name: String, body: String, vararg extraSources: Pair<String, String>): Pair<ExitCode, String> {
     val source = dir.resolve("$name.kt")
     val content = if (body.trimStart().startsWith("@file:") || body.trimStart().startsWith("package ")) {
       body.trimIndent()
@@ -29,14 +29,18 @@ class CompileSafetyTest {
       """.trimIndent()
     }
     source.writeText(content)
+    val sources = listOf(source) + extraSources.map { (file, text) ->
+      dir.resolve(file).also { it.writeText(text.trimIndent()) }
+    }
     val diagnostics = ByteArrayOutputStream()
     val exit = PrintStream(diagnostics).use { output ->
       K2JVMCompiler().exec(
         output, "-no-stdlib", "-no-reflect", "-jvm-target", "21",
         "-language-version", "2.5", "-Xcollection-literals", "-Xcompanion-blocks-and-extensions",
         "-Xcontext-sensitive-resolution", "-Xreturn-value-checker=check",
+        "-Xcontext-parameters", "-Xexplicit-context-arguments",
         "-classpath", System.getProperty("dsl.compile.classpath"),
-        "-d", dir.resolve(name).createDirectories().toString(), source.toString(),
+        "-d", dir.resolve(name).createDirectories().toString(), *sources.map(Path::toString).toTypedArray(),
       )
     }
     return exit to diagnostics.toString()
@@ -192,44 +196,123 @@ class CompileSafetyTest {
   }
 
   @Test
-  fun `custom type column extension with context parameter compiles`() {
+  fun `custom column overloads compose with the real library in a context lambda`() {
     val (exit, message) = compile("CustomTypeContext", """
-      @file:OptIn(kotlin.experimental.ExperimentalTypeInference::class)
       package app
 
-      class MyNumber(val value: Double)
+      import excel.dsl.*
+      import app.dsl.*
 
-      class Builder<T>
-
-      @OverloadResolutionByLambdaReturnType
-      @JvmName("stringColumn")
-      context(builder: Builder<T>)
-      fun <T> column(value: (T) -> String): String = "String"
-
-      @OverloadResolutionByLambdaReturnType
-      @JvmName("numberColumn")
-      context(builder: Builder<T>)
-      fun <T> column(value: (T) -> Number): String = "Number"
-
-      // Downstream / user overload:
-      @OverloadResolutionByLambdaReturnType
-      @JvmName("myNumberColumn")
-      context(builder: Builder<T>)
-      fun <T> column(value: (T) -> MyNumber): String = "MyNumber"
-
-      data class Item(val name: String, val amount: Double, val custom: MyNumber)
-
-      fun <T> build(block: context(Builder<T>) () -> Unit) {}
-
-      fun test() {
-        build<Item> {
-          val name = column { it.name }
-          val amount = column { it.amount }
-          val custom = column { it.custom }
-        }
+      context(_: SheetBuilder<Item>)
+      fun Item.columns() {
+        val name by column { it.name }
+        val hours by column { it.hours }
+        val rate by column { it.rate }
+        val total by formula { hours * rate }
       }
+
+      val schema = sheet<Item> {
+        Item("Ada", 12, Money(90.0)).columns()
+        column("Named money") { it.rate }
+        column("Named text") { it.name }
+        column("Named number") { it.hours }
+      }
+    """, "MoneyColumns.kt" to """
+      @file:OptIn(kotlin.experimental.ExperimentalTypeInference::class)
+      package app.dsl
+
+      import excel.dsl.*
+      import excel.dsl.column as dataColumn
+
+      data class Money(val amount: Double)
+      data class Item(val name: String, val hours: Int, val rate: Money)
+
+      @OverloadResolutionByLambdaReturnType
+      @JvmName("moneyColumn")
+      context(_: SheetBuilder<T>)
+      fun <T> column(
+        format: CellFormat? = null,
+        width: Int? = null,
+        value: (T) -> Money,
+      ): ColumnDelegate<Number> = dataColumn(format, width) { value(it).amount }
+
+      @OverloadResolutionByLambdaReturnType
+      @JvmName("moneyNamedColumn")
+      context(_: SheetBuilder<T>)
+      fun <T> column(
+        name: String,
+        format: CellFormat? = null,
+        width: Int? = null,
+        value: (T) -> Money,
+      ): Column<Number> = dataColumn(name, format, width) { value(it).amount }
     """)
     assertEquals(ExitCode.OK, exit, message)
   }
 
+  @Test
+  fun `context lambdas preserve the callers receiver and expose no builder members`() {
+    val (exit, message) = compile("CallerReceiver", """
+      package app
+      import excel.dsl.*
+
+      class Report {
+        fun schema() = sheet<Int> {
+          val caller: Report = this
+          val n by column { it }
+          val doubled by formula {
+            val sameCaller: Report = this
+            n * 2
+          }
+          totals {
+            val sameCaller: Report = this
+            doubled.sum()
+          }
+        }
+
+        fun report() = workbook {
+          val caller: Report = this
+          sheet("Report", schema(), listOf(1))
+        }
+
+        fun streamingReport() = flowWorkbook {
+          val caller: Report = this
+          sheet("Report", schema(), listOf(1))
+        }
+
+        fun export(rows: List<Int>) = generateExcel("report.xlsx", rows) {
+          val caller: Report = this
+          val n by column { it }
+        }
+      }
+    """)
+    assertEquals(ExitCode.OK, exit, message)
+
+    for ((index, expression) in listOf(
+      "sheet<Int> { add() }",
+      "sheet<Int> { this }",
+      "workbook { add() }",
+      "flowWorkbook { add() }",
+    ).withIndex()) {
+      val (failure, diagnostics) = compile("HiddenBuilder$index", expression)
+      assertEquals(ExitCode.COMPILATION_ERROR, failure, diagnostics)
+      assertTrue(diagnostics.contains("unresolved reference", ignoreCase = true) || diagnostics.contains("'this' is not defined"), diagnostics)
+    }
+  }
+
+  @Test
+  fun `dsl markers reject outer context operations in nested blocks`() {
+    val cases = listOf(
+      "sheet<Int> { val n by column { it }; val bad by formula { column(\"Hidden\") { it }; n * 2 } }",
+      "sheet<Int> { val n by column { it }; val bad by formula { \"Hidden\" { it }; n * 2 } }",
+      "sheet<Int> { val n by column { it }; val bad by formula { autoFilter = true; n * 2 } }",
+      "sheet<Int> { val n by column { it }; totals { column(\"Hidden\") { it } } }",
+      "val schema = sheet<Int> {}; workbook { sheet<Int> { sheet(\"Hidden\", schema, listOf(1)) } }",
+      "val schema = sheet<Int> {}; flowWorkbook { sheet<Int> { sheet(\"Hidden\", schema, listOf(1)) } }",
+    )
+    cases.forEachIndexed { index, expression ->
+      val (exit, message) = compile("NestedContext$index", expression)
+      assertEquals(ExitCode.COMPILATION_ERROR, exit, message)
+      assertTrue(message.contains("cannot be called in this context"), message)
+    }
+  }
 }

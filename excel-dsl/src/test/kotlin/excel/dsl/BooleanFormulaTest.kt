@@ -19,7 +19,7 @@ class BooleanFormulaTest {
     }
     assertEquals(true, schema.evaluate(2)["Flag"])
     assertEquals(false, schema.evaluate(null)["Flag"])
-    assertEquals(2.0, schema.totals([-1, 0, 1, 2])["Numeric"])
+    assertEquals(2.0, schema.totals(listOf(-1, 0, 1, 2))["Numeric"])
     assertExcelAgrees(schema, listOf(null, -1, 0, 1, 2))
   }
 

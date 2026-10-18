@@ -33,7 +33,7 @@ internal const val MAX_DIGITS = 15
 internal inline fun streamWorkbook(output: OutputStream, write: StreamingWorkbook.() -> Unit) {
   SXSSFWorkbook(ROW_WINDOW).use { poi ->
     StreamingWorkbook(poi).write()
-    poi.setForceFormulaRecalculation(true)
+    poi.forceFormulaRecalculation = true
     poi.write(output)
   }
 }

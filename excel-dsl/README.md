@@ -2,6 +2,14 @@
 
 A sheet is a reusable schema. Declare it once, then write lists, sequences or flows.
 
+The implementation follows the talk's context-based design. `SheetBuilder` owns the
+state, with one internal `add` function for registering data and formula columns.
+The DSL operations are top-level context functions: `column`, `formula`, string
+invocation and `totals`. Layout properties also require a sheet context.
+`sheet`, `workbook`, `flowWorkbook`, `generateExcel` and `totals` take context
+lambdas, so they supply the builder without changing the caller's `this`.
+`@ExcelDsl` restricts access to outer contexts in nested blocks.
+
 ```kotlin
 import excel.dsl.*
 import java.nio.file.Path
@@ -48,6 +56,35 @@ The library is compiled with `-Xreturn-value-checker=full`, exporting checking m
 Consumers enable `-Xreturn-value-checker=check` or `full` to warn about discarded delegates.
 Immediate registration APIs use `@IgnorableReturnValue`. Saving a delegate in an unused
 variable does not trigger this checker; it still needs `by` to register.
+
+Custom types can use the same `column` name. Put the overloads in your own package
+and import both packages with star imports, as in the talk. Match the library's
+parameters and defaults so overload selection can compare the lambda return types:
+
+```kotlin
+@file:OptIn(kotlin.experimental.ExperimentalTypeInference::class)
+package my.app.dsl
+
+import excel.dsl.*
+import excel.dsl.column as dataColumn
+
+data class Money(val amount: Double)
+
+@OverloadResolutionByLambdaReturnType
+@JvmName("moneyColumn")
+context(_: SheetBuilder<T>)
+fun <T> column(
+  format: CellFormat? = null,
+  width: Int? = null,
+  value: (T) -> Money,
+): ColumnDelegate<Number> = dataColumn(format, width) { value(it).amount }
+```
+
+Callers import `excel.dsl.*` and `my.app.dsl.*`, then use
+`val amount by column { it.amount }` alongside built-in columns. The alias inside
+the custom overload selects the library function when mapping to a supported type.
+An explicit import of only one package's `column` has priority over star imports;
+context parameters do not change Kotlin's import-priority rules.
 
 Number literals, evaluation and writing use the same finite-number, precision and range checks.
 `BigDecimal` and `BigInteger` have explicit column overloads that preserve their input types
@@ -137,6 +174,12 @@ that policy; caller-provided streams remain open.
 
 ## API migration
 
+- Import DSL functions and layout properties explicitly, or use `import excel.dsl.*`;
+  they are no longer builder members. Change reusable builder lambdas from
+  `SheetBuilder<T>.() -> Unit` to `context(SheetBuilder<T>) () -> Unit`.
+- Declare DSL helpers with `context(_: SheetBuilder<T>)` to keep their extension
+  receiver available. Use `contextOf<SheetBuilder<T>>()` when you need the builder
+  explicitly. Its registration and validation functions remain internal.
 - Replace raw `Formula` types with `Formula<Number>`, `Formula<Boolean>`, `Formula<String>` or `Formula<*>`.
 - Boolean formula columns are `Column<Boolean>`; use `.asNumber()` before arithmetic.
 - Replace numeric conditions with `.asBoolean()` and mixed-type branches with matching types.
