@@ -28,20 +28,16 @@ builder, function parameter, receiver, apply, and nested-builder mechanics.
 
 # A sheet is a lambda with receiver
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   column("Customer", bold = true) { it.customer }
   column("Hours") { it.hours }
   column("Rate") { it.rate }
   column("Total") { it.hours * it.rate }
 }
 ```
-
-</TypeHint>
 
 <!--
 This is the point we are continuing from. The export describes which columns
@@ -116,8 +112,6 @@ magic-move
 <DrawnAnnotation text="SheetBuilder<T>.() -> Unit" />
 <DrawnAnnotation text="builder.block()" />
 
-<TypeHint :line="11" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.SheetBuilder
 
@@ -131,13 +125,11 @@ fun <T> generateExcel(
   writeWorkbook(path, rows, builder)
 }
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   this.column("Customer", bold = true) { it.customer }
   this.column("Hours") { it.hours }
 }
 ```
-
-</TypeHint>
 
 <!--
 Move SheetBuilder from a parameter to the receiver of the function type.
@@ -153,8 +145,6 @@ magic-move
 
 <DrawnAnnotation text="column(&quot;Customer&quot;, bold = true)" />
 
-<TypeHint :line="11" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.SheetBuilder
 
@@ -168,13 +158,11 @@ fun <T> generateExcel(
   writeWorkbook(path, rows, builder)
 }
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   column("Customer", bold = true) { it.customer }
   column("Hours") { it.hours }
 }
 ```
-
-</TypeHint>
 
 <!--
 The receiver is implicit, so this.column can be written as column.
@@ -189,8 +177,6 @@ magic-move
 
 <DrawnAnnotation text="apply(block)" />
 
-<TypeHint :line="10" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.SheetBuilder
 
@@ -203,13 +189,11 @@ fun <T> generateExcel(
   writeWorkbook(path, rows, builder)
 }
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   column("Customer", bold = true) { it.customer }
   column("Hours") { it.hours }
 }
 ```
-
-</TypeHint>
 
 <!--
 This is the apply step from the old function-shapes slides. apply invokes
@@ -224,12 +208,10 @@ it is apply that returns the object. The writer still runs afterwards.
 <DrawnAnnotation text="this.column" />
 <DrawnAnnotation text="invoice.customer" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   this.column("Customer", bold = true) { invoice: Invoice ->
     invoice.customer
   }
@@ -238,8 +220,6 @@ generateExcel("invoices.xlsx", invoices) {
   }
 }
 ```
-
-</TypeHint>
 
 <!--
 Two function shapes: SheetBuilder<Invoice>.() -> Unit configures the sheet;
@@ -256,18 +236,14 @@ magic-move
 
 <DrawnAnnotation text="it.customer" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   column("Customer", bold = true) { it.customer }
   column("Total") { it.hours * it.rate }
 }
 ```
-
-</TypeHint>
 
 <!--
 Omit this and use the implicit single parameter it. Type inference gets
@@ -279,26 +255,18 @@ to be written here. We are back at the lightning talk's style of call site.
 
 # Each nested builder adds a receiver
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.leaky.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
   }
-  sheet("Q2", q2) {
+  sheet("Q2", q2) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 <!--
 Use the same recipe again: workbook configures a WorkbookBuilder; each

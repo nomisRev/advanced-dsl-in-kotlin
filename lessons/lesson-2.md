@@ -18,22 +18,16 @@ kodee: wave
 
 <DrawnAnnotation text="{ it }" label="Compiles, and writes `toString()` into the cell" color="red"  :geometry="{ label: { x: 0.5746, y: 0.4082 }, connector: { type: 'quadratic', start: { x: 0.3202, y: 0.3761 }, control: { x: 0.3341, y: 0.4025 }, end: { x: 0.3514, y: 0.4008 } } }"/>
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.marked.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("Hours") { it }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours                                                       |
@@ -62,27 +56,18 @@ class SheetBuilder<T> {
 
 # The overload is chosen before the lambda
 
-<InlineCompilerError :line="3" text="column" message="">
-<InlineCompilerError :line="5" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.43rem">
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.marked.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    column("Customer") { it.customer }
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
+    column("Customer") { it.customer } // [!error column ""]
     
+    // [!error style="--inline-compiler-error-message-size: 1.43rem" column Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`]
     column("Hours") { it }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
-</InlineCompilerError>
 
 <!--
 The compiler needs a candidate to know the lambda's parameter types, and the lambda's
@@ -163,24 +148,19 @@ class SheetBuilder<T> {
 <DrawnAnnotation text="{ it.customer }" label="`String`"  :geometry="{ label: { x: 0.5305, y: 0.3001 }, connector: { type: 'quadratic', start: { x: 0.4603, y: 0.2636 }, control: { x: 0.4861, y: 0.2703 }, end: { x: 0.5028, y: 0.2439 } } }" :connect="false"/>
 <DrawnAnnotation text="{ it.hours }" label="`Number`"  :geometry="{ label: { x: 0.5315, y: 0.3517 }, connector: { type: 'quadratic', start: { x: 0.3943, y: 0.3131 }, control: { x: 0.4503, y: 0.3218 }, end: { x: 0.5074, y: 0.2965 } } }" :connect="false"/>
 <DrawnAnnotation text="{ it.issuedOn }" label="`LocalDate`"  :geometry="{ label: { x: 0.5467, y: 0.3976 }, connector: { type: 'quadratic', start: { x: 0.4379, y: 0.3606 }, control: { x: 0.4773, y: 0.3674 }, end: { x: 0.5167, y: 0.3493 } } }" :connect="false"/>
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.typed.workbook
 import presentation.support.typed.column
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("Hours") { it.hours }
     column("Issued") { it.issuedOn }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 magic-move
@@ -213,18 +193,15 @@ magic-move
 
 # Extend a library DSL
 
-<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.typed.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("Hours") { it.hours }
     column("Issued") { it.issuedOn }
+    // [!error style="--inline-compiler-error-message-size: 1.35rem" column Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`]
     column("custom") { it.customCell }
   }  
 }
@@ -232,10 +209,6 @@ workbook("invoices.xlsx") {
 @OverloadResolutionByLambdaReturnType
 fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Column<String> = TODO()
 ```
-
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
 
 ---
 magic-move
@@ -243,9 +216,6 @@ magic-move
 
 # Extend a library DSL
 
-<InlineCompilerError :line="8" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
 <DrawnAnnotation text="this@sheet.column" />
 <DrawnAnnotation text="this@sheet.column" :occurrence="2" />
 <DrawnAnnotation text="this@sheet.column" :occurrence="3" label="Class method always resolve over extensions"  :geometry="{ label: { x: 0.2716, y: 0.4633 } }"/>
@@ -253,13 +223,14 @@ magic-move
 ```kotlin
 import presentation.support.typed.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     this@sheet.column("Customer") { it.customer }
     this@sheet.column("Hours") { it.hours }
     this@sheet.column("Issued") { it.issuedOn }
     
     
+    // [!error style="--inline-compiler-error-message-size: 1.35rem" column Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`]
     column("custom") { it.customCell }
   }  
 }
@@ -267,10 +238,6 @@ workbook("invoices.xlsx") {
 @OverloadResolutionByLambdaReturnType
 fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue): Column<String> = TODO()
 ```
-
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
 
 ---
 magic-move
@@ -280,16 +247,14 @@ magic-move
 
 <DrawnAnnotation text="cellColumn" label="Disambiguate using function name"  :geometry="{ label: { x: 0.3719, y: 0.5203 }, connector: { type: 'quadratic', start: { x: 0.1774, y: 0.4697 }, control: { x: 0.1759, y: 0.5044 }, end: { x: 0.2005, y: 0.5166 } } }"/>
 <DrawnAnnotation text="cellColumn" :occurrence="2" />
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
 
 ```kotlin no-compile
 import presentation.support.typed.SheetBuilder
 import presentation.support.typed.workbook
 import presentation.support.typed.column
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("Hours") { it.hours }
     column("Issued") { it.issuedOn }
@@ -301,9 +266,6 @@ workbook("invoices.xlsx") {
 fun <A> SheetBuilder<A>.cellColumn(name: String, transform: (A) -> CellValue): Column<String> =
   column(name) { transform(it).formatted() }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 magic-move
@@ -358,16 +320,13 @@ magic-move
 
 # Resolution priority
 
-<InlineCompilerError :line="6" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`" style="--inline-compiler-error-message-size: 1.35rem">
-<TypeHint :line="3" receiver="WorkbookBuilder">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
 ```kotlin show-imports
 import excel.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
+    // [!error style="--inline-compiler-error-message-size: 1.35rem" column Overload resolution ambiguity between candidates:\n`fun column(name: String, value: (Invoice) -> String)`\n`fun column(name: String, value: (Invoice) -> Number)`\n`fun column(name: String, value: (Invoice) -> LocalDate)`]
     column("custom") { it.customCell }
   }
 }
@@ -376,33 +335,23 @@ fun <A> SheetBuilder<A>.column(name: String, transform: (A) -> CellValue) =
   column(name) { transform(it).formatted() }
 ```
 
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
-
 ---
 magic-move
 ---
 
 # Resolution priority
 
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin show-imports no-compile
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 <DrawnAnnotation text="SheetBuilder" on="1" label="Lose our extension receiver to DSL" color="red" :geometry="{ label: { x: 0.3848, y: 0.8805 }, connector: { type: 'quadratic', start: { x: 0.2053, y: 0.8303 }, control: { x: 0.2005, y: 0.8679 }, end: { x: 0.2180, y: 0.8804 } } }"/>
 
@@ -440,86 +389,64 @@ fun <A> column(name: String, transform: (A) -> CellValue) = builder.add(..)
 
 # Users can add their own `column` overloads
 
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin show-imports no-compile
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
 # Receivers bring their members into scope
 
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin show-imports no-compile
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
     add(...)
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
 # Context doens't bring members into scope
 
-<TypeHint :line="4" context="WorkbookBuilder">
-<TypeHint :line="5" context="SheetBuilder<Invoice>">
-<InlineCompilerError text="add" message="Unresolved reference `add`" >
-
 ```kotlin show-imports no-compile
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
-    add(...)
+    add(...) // [!error add Unresolved reference `add`]
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 ---
 
 # Context members remain accessible explicitly
 
-<TypeHint :line="4" context="WorkbookBuilder">
-<TypeHint :line="5" context="SheetBuilder<Invoice>">
 <DrawnAnnotation text="contextOf" label="Get instance of `context(SheetBuilder<Invoice>)`"  :geometry="{ label: { x: 0.3405, y: 0.7005 }, connector: { type: 'quadratic', start: { x: 0.1629, y: 0.5595 }, control: { x: 0.1649, y: 0.6145 }, end: { x: 0.1629, y: 0.6799 } } }"/>
 
 ```kotlin show-imports no-compile
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
     contextOf<SheetBuilder<Invoice>>().add(...)
@@ -527,22 +454,16 @@ workbook("invoices.xlsx") {
 }
 ```
 
-</TypeHint>
-</TypeHint>
-
 ---
 
 # `@DslMarker` restricts context access too
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<InlineCompilerError :line="5" text="sheet" message="Cannot be called in this context with an implicit receiver\nUse an explicit receiver if necessary.">
-
 ```kotlin{1-2,5}
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
     
+    // [!error sheet Cannot be called in this context with an implicit receiver\nUse an explicit receiver if necessary.]
     sheet("Q2", q2) {
     
       column("Customer", bold = true) { it.customer }
@@ -551,24 +472,17 @@ workbook("invoices.xlsx") {
 }
 ```
 
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-
-
 ---
 
 # Kotlin computes the value before Excel sees it
 
 <DrawnAnnotation text="it.hours * it.rate" label="Computed in Kotlin, not really a formula" color="red"  :geometry="{ label: { x: 0.6688, y: 0.5045 }, connector: { type: 'quadratic', start: { x: 0.3916, y: 0.4796 }, control: { x: 0.4207, y: 0.5110 }, end: { x: 0.4737, y: 0.5025 } } }"/>
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("Hours") { it.hours }
     column("Rate") { it.rate }
@@ -576,9 +490,6 @@ workbook("invoices.xlsx") {
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 <DrawnAnnotation text="1080" color="red" />
 
@@ -595,14 +506,12 @@ magic-move
 
 <DrawnAnnotation text="val hours" />
 <DrawnAnnotation text="val rate" label="Reference the actual columns"  :geometry="{ label: { x: 0.2830, y: 0.5300 }, connector: { type: 'quadratic', start: { x: 0.1625, y: 0.4188 }, control: { x: 0.1637, y: 0.4624 }, end: { x: 0.1637, y: 0.5074 } } }"/>
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
@@ -610,9 +519,6 @@ workbook("invoices.xlsx") {
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -625,27 +531,20 @@ magic-move
 
 # Column multiplication needs an operator
 
-<InlineCompilerError :line="7" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
     
+    // [!error * Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`]
     column("Total") { hours * rate }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -658,27 +557,19 @@ magic-move
 
 # `formula` brings column operators into scope
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="7" context="FormulaBuilder">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
     
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -691,31 +582,22 @@ magic-move
 
 # Column operators stay inside `formula`
 
-<InlineCompilerError :line="9" text="*" message="Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`">
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="7" context="FormulaBuilder">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
     
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
 
+    // [!error * Unresolved reference `times` for operator `*` on receiver of type `Column<Number>`]
     hours * rate
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -819,26 +701,18 @@ class FormulaBuilder internal constructor()
 
 # The total is a number, not a formula
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -849,30 +723,20 @@ workbook("invoices.xlsx") {
 
 # The total is a number, not a formula
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<InlineCompilerError text="*" :line="8" message="No context argument for `builder: FormulaBuilder` found.">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
     
-    hours * rate
+    hours * rate // [!error * No context argument for `builder: FormulaBuilder` found.]
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  |
@@ -882,31 +746,21 @@ workbook("invoices.xlsx") {
 
 # Operator with required return types
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<TypeHint :line="7" context="FormulaBuilder">
-<InlineCompilerError text="<" message="Unresolved reference `compareTo` on receiver of type `Column<Long>`">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
+    // [!context FormulaBuilder]
+    // [!error < Unresolved reference `compareTo` on receiver of type `Column<Long>`]
     formula("Full Day") { hours < 8.hours } 
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  | Under 8 hours |
@@ -917,37 +771,26 @@ workbook("invoices.xlsx") {
 
 # Operator with required return types
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<TypeHint :line="7" context="FormulaBuilder">
-<InlineCompilerError text="<" message="Unresolved reference `compareTo`\non receiver of type `Column<Long>`" style="--inline-compiler-error-message-size: 1.5rem">
-<InlineCompilerError text="operator" message="`operator` modifier is not applicable to function: must return `Int`">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
+    // [!context FormulaBuilder]
+    // [!error style="--inline-compiler-error-message-size: 1.5rem" < Unresolved reference `compareTo`\non receiver of type `Column<Long>`]
     formula("Full Day") { hours < 8.hours } 
   }
 }
 
 context(_: FormulaBuilder)
+// [!error operator `operator` modifier is not applicable to function: must return `Int`]
 operator fun Column<Long>
   .compareTo(other: Column<Long>): Formula = TODO()
 ```
-
-</InlineCompilerError>
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  | Under 8 hours |
@@ -958,21 +801,16 @@ operator fun Column<Long>
 
 # Operator with required return types
 
-<TypeHint :line="1" context="WorkbookBuilder">
-<TypeHint :line="2" context="SheetBuilder<Invoice>">
-<TypeHint :line="6" context="FormulaBuilder">
-<TypeHint :line="7" context="FormulaBuilder">
-
 ```kotlin
 import presentation.support.trees.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!context WorkbookBuilder]
+  sheet("Q1", q1) { // [!context SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     val hours = column("Hours") { it.hours }
     val rate = column("Rate") { it.rate }
-    formula("Total") { hours * rate }
-    formula("Under 8 hours") { hours lessThan 8 }
+    formula("Total") { hours * rate } // [!context FormulaBuilder]
+    formula("Under 8 hours") { hours lessThan 8 } // [!context FormulaBuilder]
   }
 }
 
@@ -980,11 +818,6 @@ context(_: FormulaBuilder)
 infix fun Column<Number>.lessThan(other: Number): Formula<Boolean> =
   Formula.LessThan(Formula.Ref(this), Formula.Constant(other.toDouble()))
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ```console
 | Customer | Hours | Rate | Total  | Under 8 hours |
@@ -1067,8 +900,6 @@ workbook("invoices.xlsx") {
 
 # Formulas build a tree
 
-<InlineCompilerError text="company" :line="11" message="Argument type mismatch: actual type is 'Column<String>', but 'Column<Int>' was expected.">
-
 ```kotlin
 import presentation.support.trees.*
 
@@ -1082,13 +913,12 @@ workbook("invoices.xlsx") {
   sheet("Q1", q1) {
     val company = column("Customer") { it.customer }
     formula("one or two") {
+      // [!error company Argument type mismatch: actual type is 'Column<String>', but 'Column<Int>' was expected.]
       [1, 2] contains company
     }
   }
 }
 ```
-
-</InlineCompilerError>
 
 ---
 

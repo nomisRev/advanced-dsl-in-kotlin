@@ -23,26 +23,18 @@ kodee: wave
 
 # One file, many sheets
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin{1-2,4-5,7-8}
 import presentation.support.leaky.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
   }
-  sheet("Q2", q2) {
+  sheet("Q2", q2) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 <!--
 - Workbook builder
@@ -56,26 +48,18 @@ workbook("invoices.xlsx") {
 
 <DrawnAnnotation text="sheet(&quot;Q2&quot;, q2)" label="Resolves to `this@workbook.sheet`, and compiles" color="red"  :geometry="{ label: { x: 0.3719, y: 0.4511 }, connector: { type: 'quadratic', start: { x: 0.1101, y: 0.3760 }, control: { x: 0.1115, y: 0.4353 }, end: { x: 0.1345, y: 0.4495 } } }"/>
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
 ```kotlin{1-2,4,6-8}
 import presentation.support.leaky.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
-    sheet("Q2", q2) {
+    sheet("Q2", q2) { // [!this SheetBuilder<Invoice>]
       column("Customer", bold = true) { it.customer }
     }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 <!--
 - Illegal nesting
@@ -139,17 +123,14 @@ class SheetBuilder<T> {
 
 > Only the _closest_ marked receiver is implicit
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<InlineCompilerError :line="5" text="sheet" message="Cannot be called in this context with an implicit receiver\nUse an explicit receiver if necessary.">
-
 ```kotlin
 import presentation.support.marked.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
     
+    // [!error sheet Cannot be called in this context with an implicit receiver\nUse an explicit receiver if necessary.]
     sheet("Q2", q2) {
       
       column("Customer", bold = true) { it.customer }
@@ -157,10 +138,6 @@ workbook("invoices.xlsx") {
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 ---
 magic-move
@@ -172,14 +149,11 @@ magic-move
 
 <DrawnAnnotation text="this@workbook" label="Still possible, but explicit at the call site"  :geometry="{ label: { x: 0.3229, y: 0.5587 }, connector: { type: 'quadratic', start: { x: 0.1067, y: 0.4778 }, control: { x: 0.1060, y: 0.5293 }, end: { x: 0.1297, y: 0.5509 } } }"/>
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.marked.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer", bold = true) { it.customer }
     this@workbook.sheet("Q2", q2) {
       column("Customer", bold = true) { it.customer }
@@ -187,9 +161,6 @@ workbook("invoices.xlsx") {
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -216,26 +187,16 @@ class SheetBuilder<T> {
 
 # Mark receivers you don't own
 
-<InlineCompilerError :line="5" text="column" message="cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.5rem">
-
-<TypeHint :line="1" receiver="WorkbookBuilder">
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="3" receiver="CellStyle">
-
 ```kotlin
 import presentation.support.marked.workbook
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
-    header {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
+    header { // [!this CellStyle]
       wrapText = true
+      // [!error style="--inline-compiler-error-message-size: 1.5rem" column cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.]
       column("Customer") { it.customer }
     }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>

@@ -56,24 +56,17 @@ fun <T> SheetBuilder<T>.column(name: String, value: (T) -> LocalDate) = builder.
 
 ---
 
-
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="5" receiver="SheetBuilder<Invoice>">
-
 ```kotlin show-imports
 import excel.dsl.*
 import my.app.dsl.*
 
-workbook("invoices.xlsx") {
-  sheet("Q1", q1) {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     column("Customer") { it.customer }
     column("custom") { it.customCell }
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ```kotlin
 package my.app.dsl

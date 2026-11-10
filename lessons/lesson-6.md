@@ -117,19 +117,16 @@ inline fun <T> generateExcel(
 
 # A stored lambda cannot be inlined
 
-<InlineCompilerError :line="5" text="value" occurrence="2" message="Illegal usage of inline parameter 'value: (T) -> Any?'.\nAdd 'noinline' modifier to the parameter declaration.">
-
 ```kotlin
 class SheetBuilder<T> {
   val values: MutableList<(T) -> Any?> = mutableListOf()
 
   inline fun column(name: String, value: (T) -> Any?) {
+    // [!error occurrence=2 value Illegal usage of inline parameter 'value: (T) -> Any?'.\nAdd 'noinline' modifier to the parameter declaration.]
     values.add(value)
   }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 Column lambdas run once per row, so they have to be stored. Only the outer builder block benefits from inline.
@@ -193,8 +190,6 @@ block written against Part 5's `Formulas` still runs against Part 6's.
 > `HIDDEN`: doesn't exist, keep looking. `ERROR`: found it, and forbidden
 
 <DrawnAnnotation text="sheet" :line="2" label="Shadows `WorkbookBuilder.sheet` on the closest receiver" color="var(--fundamentals-blue)" :connect="false" :geometry="{ label: { x: 0.52, y: 0.457 } }" />
-<TypeHint :line="8" receiver="WorkbookBuilder">
-<InlineCompilerError :line="10" text="sheet" message="'fun <T> SheetBuilder<*>.sheet(name: String, rows: Sequence<T>,\nblock: SheetBuilder<T>.() -> Unit): Nothing' is deprecated.\nA sheet cannot contain a sheet." style="--inline-compiler-error-message-size: 1.1rem">
 
 ```kotlin
 import presentation.support.marked.SheetBuilder
@@ -207,15 +202,13 @@ fun <T> SheetBuilder<*>.sheet(
   block: SheetBuilder<T>.() -> Unit,
 ): Nothing = error("unreachable")
 
-workbook("invoices.xlsx") {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
   sheet("Q1", q1) {
+    // [!error style="--inline-compiler-error-message-size: 1.1rem" sheet 'fun <T> SheetBuilder<*>.sheet(name: String, rows: Sequence<T>,\nblock: SheetBuilder<T>.() -> Unit): Nothing' is deprecated.\nA sheet cannot contain a sheet.]
     sheet("Q2", q2) { }
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
 
 <!--
 Part 1 already stops this with `@DslMarker`, but the message is the compiler's. An
@@ -234,9 +227,6 @@ implicit receiver."
 
 <DrawnAnnotation text="Column<*>.withVat" label="Less specific, so it only wins outside `formula { }`" :connect="false" :geometry="{ label: { x: 0.40, y: 0.575 } }" />
 <DrawnAnnotation text="total.withVat()" :line="14" label="Both apply, `Column<Number>` is more specific" color="var(--fundamentals-blue)" :connect="false" :geometry="{ label: { x: 0.70, y: 0.76 } }" />
-<TypeHint :line="10" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="14" text="formula {" receiver="Formulas">
-<InlineCompilerError :line="15" text="withVat" message="'fun Column<*>.withVat(): Cell' is deprecated. withVat() only exists inside formula { }." style="--inline-compiler-error-message-size: 1.3rem">
 
 ```kotlin
 import presentation.support.contexts.Formulas
@@ -252,18 +242,15 @@ fun Column<Number>.withVat(): Cell = formulas.multiply(this, 1.21)
 )
 fun Column<*>.withVat(): Cell = error("unreachable")
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
   val total by formula { hours * rate }
-  val gross by formula { total.withVat() }
+  val gross by formula { total.withVat() } // [!this text=`formula {` Formulas]
+  // [!error style="--inline-compiler-error-message-size: 1.3rem" withVat 'fun Column<*>.withVat(): Cell' is deprecated. withVat() only exists inside formula { }.]
   val outside = total.withVat()
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 <!--
 Without the fallback the error is the compiler's: "No context argument for 'formulas:
@@ -278,7 +265,6 @@ fallback needs a lever: a less specific receiver (`Column<*>`) or parameter type
 
 <DrawnAnnotation text="fun Formulas.withVat(column" label="The Part 5 helper, before context parameters" :connect="false" :geometry="{ label: { x: 0.57, y: 0.243 } }" />
 <DrawnAnnotation text="context(formulas: Formulas)" label="Compiles to the same first parameter" color="var(--fundamentals-blue)" :geometry="{ label: { x: 0.33, y: 0.55 }, connector: { type: 'quadratic', start: { x: 0.30, y: 0.355 }, control: { x: 0.32, y: 0.45 }, end: { x: 0.33, y: 0.525 } } }" />
-<InlineCompilerError :line="5" text="withVat" message="Platform declaration clash:\nThe following declarations have the same JVM signature\n(withVat(Lpresentation/support/contexts/Formulas;\nLpresentation/support/Column;)Lpresentation/support/Cell;)" style="--inline-compiler-error-message-size: 1rem">
 
 ```kotlin
 import presentation.support.contexts.Formulas
@@ -287,11 +273,10 @@ fun Formulas.withVat(column: Column<Number>): Cell =
   multiply(column, 1.21)
 
 context(formulas: Formulas)
+// [!error style="--inline-compiler-error-message-size: 1rem" withVat Platform declaration clash:\nThe following declarations have the same JVM signature\n(withVat(Lpresentation/support/contexts/Formulas;\nLpresentation/support/Column;)Lpresentation/support/Cell;)]
 fun Column<Number>.withVat(): Cell =
   formulas.multiply(this, 1.21)
 ```
-
-</InlineCompilerError>
 
 ---
 magic-move
@@ -330,8 +315,6 @@ caller. `javap` on 2.4.20: `withVat(Formulas, Column)` and `withVatColumn(Formul
 
 # A `Cell` does not compose
 
-<InlineCompilerError :line="4" text="*" occurrence="2" message="None of the following candidates is applicable:\n`context(formulas: Formulas) fun Column<Number>.times(other: Column<Number>): Cell`\n`context(formulas: Formulas) fun Column<Number>.times(factor: Double): Cell`" style="--inline-compiler-error-message-size: 1.1rem">
-
 ```kotlin
 import presentation.support.contexts.times
 import presentation.support.lists.generateExcel
@@ -339,11 +322,10 @@ import presentation.support.lists.generateExcel
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
+  // [!error style="--inline-compiler-error-message-size: 1.1rem" occurrence=2 * None of the following candidates is applicable:\n`context(formulas: Formulas) fun Column<Number>.times(other: Column<Number>): Cell`\n`context(formulas: Formulas) fun Column<Number>.times(factor: Double): Cell`]
   val gross by formula { hours * rate * 1.21 }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `hours * rate` already rendered itself to "=B2*C2". A string cannot be multiplied again,
@@ -399,27 +381,21 @@ fun Formula.toExcel(row: Int): String = when (this) {
 
 <DrawnAnnotation text="formula { hours * rate * 1.21 }" label="Runs once, at the `by`"  :geometry="{ label: { x: 0.6406, y: 0.4430 }, connector: { type: 'quadratic', start: { x: 0.4716, y: 0.4248 }, control: { x: 0.4864, y: 0.4497 }, end: { x: 0.5289, y: 0.4466 } } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="Formulas">
-
 ```kotlin
 import presentation.support.expressions.generateExcel
 import presentation.support.expressions.times
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val gross by formula { hours * rate * 1.21 }
+  val gross by formula { hours * rate * 1.21 } // [!this Formulas]
 }
 ```
 ```console
 | customer | hours | rate | gross       |
 | Ada      | 12    | 90   | =B2*C2*1.21 |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 Before, the formula lambda ran again for every row with a new ExcelFormulas(row).
@@ -431,23 +407,18 @@ Now the tree is built once when the column is registered, and each row only rend
 # A sheet is a value
 
 <DrawnAnnotation text="sheet<Invoice>" />
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="Formulas">
 
 ```kotlin
 import excel.dsl.sheet
 import excel.dsl.times
 
-val invoiceSheet = sheet<Invoice> {
+val invoiceSheet = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val gross by formula { hours * rate * 1.21 }
+  val gross by formula { hours * rate * 1.21 } // [!this Formulas]
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 Same columns and expression tree, now returned as a Sheet<Invoice>. There is no
@@ -481,18 +452,15 @@ does not make a one-shot row source repeatable. No file is opened until write.
 
 # The schema is testable without a file
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="Formulas">
-
 ```kotlin
 import excel.dsl.sheet
 import excel.dsl.times
 
-val invoiceSheet = sheet<Invoice> {
+val invoiceSheet = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val gross by formula { hours * rate * 1.21 }
+  val gross by formula { hours * rate * 1.21 } // [!this Formulas]
 }
 
 println(invoiceSheet.headers)
@@ -502,9 +470,6 @@ println(invoiceSheet.evaluate(invoices.first())["Gross"])
 [Customer, Hours, Rate, Gross]
 1306.8
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 The same expression tree has two interpreters: Excel text and values. We have

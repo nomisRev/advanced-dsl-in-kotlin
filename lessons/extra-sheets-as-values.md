@@ -33,26 +33,20 @@ core: `DelegatedColumns` for `by column`, Part 6's `lists.Formulas` for
 <DrawnAnnotation text="invoices" :line="1" occurrence="2" label="What: the rows" color="var(--fundamentals-blue)" />
 <DrawnAnnotation text="val total by formula" label="How: the schema, rebuilt on every call" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="Formulas">
-
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
+  val total by formula { hours * rate } // [!this Formulas]
 }
 ```
 ```console
 | customer | hours | rate | total  |
 | Ada      | 12    | 90   | =B2*C2 |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 What is wrong with this, concretely:
@@ -198,15 +192,13 @@ the caller's decision. Not run on purpose: it would keep a port open.
 <DrawnAnnotation text="sheet(&quot;Q1&quot;, invoiceSheet, q1)" label="A name, a schema, the rows" />
 <DrawnAnnotation text="report.write" label="Every `Sequence` is pulled here" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="WorkbookBuilder">
-
 ```kotlin
 import kotlin.io.path.Path
 import kotlin.io.path.outputStream
 import presentation.support.sheets.invoiceSheet
 import presentation.support.sheets.workbook
 
-val report = workbook {
+val report = workbook { // [!this WorkbookBuilder]
   sheet("Q1", invoiceSheet, q1)
   sheet("Q2", invoiceSheet, q2)
 }
@@ -224,8 +216,6 @@ Q2
 | Olivia   | 6     | 95   | =B2*C2 |
 | Linus    | 14    | 80   | =B3*C3 |
 ```
-
-</TypeHint>
 
 <!--
 `workbook { }` follows the same rule: it returns a `Workbook` value and
@@ -288,30 +278,21 @@ magic-move
 <DrawnAnnotation text="val gross by formula" label="The Part 5 line, now inside the block" />
 <DrawnAnnotation text="invoiceSheet.evaluate" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" receiver="Formulas">
-<TypeHint :line="5" receiver="Formulas">
-<InlineValue :line="8" text="invoiceSheet.evaluate(invoices.first())[&quot;gross&quot;]" value="1306.8">
-
 ```kotlin
 import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 import presentation.support.sheets.sheet
 
-val invoiceSheet = sheet<Invoice> {
+val invoiceSheet = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
-  val gross by formula { total.withVat() }
+  val total by formula { hours * rate } // [!this Formulas]
+  val gross by formula { total.withVat() } // [!this Formulas]
 }
 
+// [!value `invoiceSheet.evaluate(invoices.first())["gross"]` 1306.8]
 invoiceSheet.evaluate(invoices.first())["gross"]
 ```
-
-</InlineValue>
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 <!--
 `withVat` is Part 5's `context(formulas: Formulas) fun Column<Number>.withVat()`.

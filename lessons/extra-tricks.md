@@ -16,18 +16,15 @@ kodee: wave
 
 # `>` cannot build a tree
 
-<InlineCompilerError :line="2" text="operator" message="'operator' modifier is not applicable to function: must return 'Int'." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import presentation.support.tricks.Formula
 import presentation.support.tricks.Formulas
 
 context(_: Formulas)
+// [!error style="--inline-compiler-error-message-size: 1.2rem" operator 'operator' modifier is not applicable to function: must return 'Int'.]
 operator fun Column<Number>.compareTo(limit: Double): Formula =
   Formula.Greater(Formula.Ref(this), Formula.Constant(limit))
 ```
-
-</InlineCompilerError>
 
 <!--
 `a > b` is compiled to `a.compareTo(b) > 0`, so `compareTo` has to return `Int`.
@@ -58,26 +55,20 @@ infix fun Column<Number>.gt(limit: Double): Formula =
 
 <DrawnAnnotation text="total gt 1000.0" label="`total.gt(1000.0)`, without the dot and the parentheses" :geometry="{ label: { x: 0.40, y: 0.68 } }" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="formula {" receiver="Formulas">
-
 ```kotlin
 import presentation.support.tricks.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
   val total by formula { hours * rate }
-  val large by formula { total gt 1000.0 }
+  val large by formula { total gt 1000.0 } // [!this text=`formula {` Formulas]
 }
 ```
 ```console
 | hours | rate | total  | large       |
 | 12    | 90   | =A2*B2 | =C2>1000.0  |
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -105,25 +96,19 @@ class SheetBuilder<T> {
 
 <DrawnAnnotation text="&quot;Customer&quot; {" label="`&quot;Customer&quot;.invoke { }`" :geometry="{ label: { x: 0.52, y: 0.24 } }" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.tricks.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   "Customer" { it.customer }
   "Hours" { it.hours }
   "Issued" { it.issuedOn }
 }
 ```
 
-</TypeHint>
-
 ---
 
 # A lambda may run twice
-
-<InlineCompilerError :line="4" text="customers" message="Captured values cannot be initialized because of possible reassignments.">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -131,14 +116,13 @@ import presentation.support.delegated.generateExcel
 fun exportCustomers(): Column<String> {
   val customers: Column<String>
   generateExcel("invoices.xlsx", invoices) {
+    // [!error customers Captured values cannot be initialized because of possible reassignments.]
     val customer by column { it.customer }
     customers = customer
   }
   return customers
 }
 ```
-
-</InlineCompilerError>
 
 ---
 

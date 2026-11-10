@@ -44,8 +44,6 @@ there was no slide content to archive for that import.
 
 <DrawnAnnotation text="column(&quot;Customer&quot;)" label="Resolves to the user's `SheetBuilder<Invoice>.column`, not the library's" color="red" />
 <DrawnAnnotation text="column(&quot;custom&quot;)" label="The only call it was written for" />
-<InlineCompilerError :line="2" text="{ it.customer }" message="Return type mismatch: expected 'CustomType', actual 'String'.">
-<InlineCompilerError :line="3" text="{ it.hours }" message="Return type mismatch: expected 'CustomType', actual 'Int'.">
 
 ```kotlin
 import presentation.support.typed.column
@@ -53,14 +51,13 @@ import presentation.support.typed.generateExcel
 import invoices.custom.column
 
 generateExcel("invoices.xlsx", invoices) {
+  // [!error `{ it.customer }` Return type mismatch: expected 'CustomType', actual 'String'.]
   column("Customer") { it.customer }
+  // [!error `{ it.hours }` Return type mismatch: expected 'CustomType', actual 'Int'.]
   column("Hours") { it.hours }
   column("custom") { it.custom }
 }
 ```
-
-</InlineCompilerError>
-</InlineCompilerError>
 
 <!--
 The Part 2 slide declares `fun SheetBuilder<Invoice>.column(name: String,
@@ -178,23 +175,15 @@ need no annotation. Immediate registration functions opt out with
 
 > Consumer: `-Xreturn-value-checker=check`
 
-<Warning :line="2" text="column" message="Unused return value of 'column'.">
-<Warning :line="3" text="formula" message="Unused return value of 'formula'.">
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-val report = sheet<Invoice> {
-  column { it.customer }
-  formula { literal(1) }
+val report = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
+  column { it.customer } // [!warning column Unused return value of 'column'.]
+  formula { literal(1) } // [!warning formula Unused return value of 'formula'.]
   column("Hours") { it.hours }
 }
 ```
-
-</TypeHint>
-</Warning>
-</Warning>
 
 <!--
 The two unnamed calls discard a delegate, so neither registers a column. The
@@ -211,19 +200,15 @@ magic-move
 
 # `by` consumes the delegate
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-val report = sheet<Invoice> {
+val report = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val one by formula { literal(1) }
   column("Hours") { it.hours }
 }
 ```
-
-</TypeHint>
 
 ---
 
@@ -259,30 +244,22 @@ as a context, the block no longer needs `this` at all.
 <DrawnAnnotation text="hours * rate" label="`context(formulas: Formulas)` operators resolve"  :geometry="{ label: { x: 0.6811, y: 0.3790 } }"/>
 <DrawnAnnotation text="total.withVat()" label="So does every user extension from Part 5" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.7123, y: 0.5465 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" context="Formulas">
-<TypeHint :line="5" text="formula {" context="Formulas">
-
 ```kotlin
 import presentation.support.contextual.generateExcel
 import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
-  val gross by formula { total.withVat() }
+  val total by formula { hours * rate } // [!context text=`formula {` Formulas]
+  val gross by formula { total.withVat() } // [!context text=`formula {` Formulas]
 }
 ```
 ```console
 | hours | rate | total  | gross    |
 | 12    | 90   | =A2*B2 | =C2*1.21 |
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ---
 magic-move
@@ -292,8 +269,6 @@ magic-move
 
 > Part 5, after “A receiver satisfies a context”
 
-<InlineCompilerError :line="4" text="multiply" message="Unresolved reference 'multiply'.">
-
 ```kotlin
 import presentation.support.contextual.generateExcel
 import presentation.support.contexts.times
@@ -302,12 +277,10 @@ import presentation.support.contexts.withVat
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { multiply(hours, rate) }
+  val total by formula { multiply(hours, rate) } // [!error multiply Unresolved reference 'multiply'.]
   val gross by formula { total.withVat() }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 The members of `Formulas` are not in scope: the context is not `this`. The
@@ -325,10 +298,6 @@ the level of the block.
 <DrawnAnnotation text="context(_: WorkbookBuilder)" label="Satisfied by the marked `workbook { }` receiver"  :geometry="{ label: { x: 0.6277, y: 0.3352 } }"/>
 <DrawnAnnotation text="stamp()" :line="5" label="The closest marked scope is the workbook" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.4166, y: 0.4931 } }"/>
 
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="6" receiver="SheetBuilder<Invoice>">
-<InlineCompilerError :line="7" text="stamp" message="'context(_: WorkbookBuilder) fun stamp(): Unit' cannot be called in this context\nwith an implicit receiver. Use an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import presentation.support.marked.WorkbookBuilder
 import presentation.support.marked.workbook
@@ -336,17 +305,14 @@ import presentation.support.marked.workbook
 context(_: WorkbookBuilder)
 fun stamp() {}
 
-workbook("invoices.xlsx") {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
   stamp()
-  sheet("Q1", q1) {
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
+    // [!error style="--inline-compiler-error-message-size: 1.2rem" stamp 'context(_: WorkbookBuilder) fun stamp(): Unit' cannot be called in this context\nwith an implicit receiver. Use an explicit receiver if necessary.]
     stamp()
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 <!--
 Context parameters (stable since 2.4.0) resolve from the same implicit
@@ -367,20 +333,17 @@ magic-move
 <DrawnAnnotation text="invoiceSheet.write" label="The I/O, as often as needed" color="var(--fundamentals-blue)" />
 <DrawnAnnotation text="output" :line="8" label="An `OutputStream`, not a `String` path" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" receiver="Formulas">
-
 ```kotlin
 import kotlin.io.path.Path
 import kotlin.io.path.outputStream
 import presentation.support.contexts.times
 import presentation.support.sheets.sheet
 
-val invoiceSheet = sheet<Invoice> {
+val invoiceSheet = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
+  val total by formula { hours * rate } // [!this Formulas]
 }
 
 Path("invoices.xlsx").outputStream().use { output ->
@@ -391,9 +354,6 @@ Path("invoices.xlsx").outputStream().use { output ->
 | customer | hours | rate | total  |
 | Ada      | 12    | 90   | =B2*C2 |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 The block is byte-for-byte the same as before; the audience should see that
@@ -450,18 +410,13 @@ With `generateExcel` this slide is two copies of the block.
 
 # The schema is testable without a file
 
-<InlineValue :line="1" text="invoiceSheet.headers" value="[customer, hours, rate, total]">
-<InlineValue :line="2" text="invoiceSheet.evaluate(invoices.first())" value="{customer=Ada, hours=12, rate=90, total=1080.0}">
-
 ```kotlin
 import presentation.support.sheets.invoiceSheet
 
-invoiceSheet.headers
+invoiceSheet.headers // [!value invoiceSheet.headers [customer, hours, rate, total]]
+// [!value invoiceSheet.evaluate(invoices.first()) {customer=Ada, hours=12, rate=90, total=1080.0}]
 invoiceSheet.evaluate(invoices.first())
 ```
-
-</InlineValue>
-</InlineValue>
 
 <!--
 This is the Part 4 payoff: `evaluate` runs every `formula { }` block again

@@ -141,17 +141,13 @@ synthetic method; the `Function` overload follows it with
 
 > Extra “Sheets as values”, after “A sheet is a value”
 
-<InlineCompilerError :line="1" text="sheet" message="Cannot infer type for type parameter 'T'. Specify it explicitly.">
-
 ```kotlin
 import presentation.support.sheets.sheet
 
-val invoiceSheet = sheet {
+val invoiceSheet = sheet { // [!error sheet Cannot infer type for type parameter 'T'. Specify it explicitly.]
   val customer by column { it.customer }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `generateExcel("invoices.xlsx", invoices)` had `invoices` to infer `T` from.
@@ -232,9 +228,6 @@ argument of a reified inline function compiles on 2.5.0-Beta1.
 
 > Part 5, after “A receiver satisfies a context”
 
-<InlineCompilerError :line="9" text="column" message="'fun Sheet.column(name: String): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.1rem">
-<InlineCompilerError :line="10" text="bold" message="'context(styles: Styles) fun bold(): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.1rem">
-
 ```kotlin
 @ExcelDsl class Styles
 @ExcelDsl class Sheet
@@ -244,15 +237,14 @@ fun Sheet.column(name: String) { }
 
 context(styles: Styles)
 fun Sheet.report() {
+  // [!error style="--inline-compiler-error-message-size: 1.1rem" column 'fun Sheet.column(name: String): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.]
   column("Customer")
+  // [!error style="--inline-compiler-error-message-size: 1.1rem" bold 'context(styles: Styles) fun bold(): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.]
   bold()
   this.column("Hours")
   context(styles) { bold() }
 }
 ```
-
-</InlineCompilerError>
-</InlineCompilerError>
 
 <!--
 KEEP design note 0005, "No duplicate markers on the same scope": if two
@@ -279,7 +271,6 @@ explicit receiver.
 > Part 6, after “`inline` removes the builder lambda”
 
 <DrawnAnnotation text="internal fun save" label="Callers in other modules cannot see it" color="red" />
-<InlineCompilerError :line="5" text="save" message="Public-API inline function cannot access non-public-API function.">
 
 ```kotlin
 import presentation.support.delegated.SheetBuilder
@@ -288,11 +279,9 @@ internal fun save(path: String) { }
 
 inline fun <T> sheet(path: String, block: SheetBuilder<T>.() -> Unit) {
   val builder = SheetBuilder<T>().apply(block)
-  save(path)
+  save(path) // [!error save Public-API inline function cannot access non-public-API function.]
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 The body of an `inline` function is copied into every caller's class file, in
@@ -373,7 +362,6 @@ sibling `@SubclassOptInRequired` for implementing an interface.
 > Part 6, after “Hide the old API, keep the binary”
 
 <DrawnAnnotation text="formula" :line="4" label="`@OptIn(ExperimentalFormulas::class)` on the caller, or `-opt-in=` for a module" />
-<InlineCompilerError :line="4" text="formula" message="Formulas are experimental, the operators may change">
 
 ```kotlin
 import presentation.support.contexts.times
@@ -381,11 +369,10 @@ import presentation.support.contexts.times
 val report = SheetBuilder<Invoice>().apply {
   val hours by column { it.hours }
   val rate by column { it.rate }
+  // [!error formula Formulas are experimental, the operators may change]
   val total by formula { hours * rate }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 The compiler's error is the marker's message, verbatim. The IDE adds the

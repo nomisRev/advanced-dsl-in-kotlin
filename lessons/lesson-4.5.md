@@ -264,20 +264,14 @@ class SheetBuilder<T> {
 
 > Consumer: `-Xreturn-value-checker=check`
 
-<Warning :line="2" text="column" message="Unused return value of 'column'.">
-<TypeHint :line="1" context="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
-  column { it.customer }
+generateExcel("invoices.xlsx", invoices) { // [!context SheetBuilder<Invoice>]
+  column { it.customer } // [!warning column Unused return value of 'column'.]
   val hours by column { it.hours }
 }
 ```
-
-</TypeHint>
-</Warning>
 
 <!--
 column returns a PropertyDelegateProvider. Without by, provideDelegate never runs
@@ -292,12 +286,11 @@ magic-move
 # `by` triggers registration
 
 <DrawnAnnotation text="val customer by column" />
-<TypeHint :line="1" context="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!context SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
 }
@@ -306,8 +299,6 @@ generateExcel("invoices.xlsx", invoices) {
 | customer | hours |
 | Ada      | 12    |
 ```
-
-</TypeHint>
 
 <!--
 The warning catches a discarded result. Assigning the provider to a normal val
@@ -320,20 +311,14 @@ also counts as using it, so the checker cannot prove every provider is bound by 
 
 > `-Xwarning-level=RETURN_VALUE_NOT_USED:error`
 
-<InlineCompilerError :line="2" text="column" message="Unused return value of 'column'.">
-<TypeHint :line="1" context="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
-  column { it.customer }
+generateExcel("invoices.xlsx", invoices) { // [!context SheetBuilder<Invoice>]
+  column { it.customer } // [!error column Unused return value of 'column'.]
   val hours by column { it.hours }
 }
 ```
-
-</TypeHint>
-</InlineCompilerError>
 
 ---
 

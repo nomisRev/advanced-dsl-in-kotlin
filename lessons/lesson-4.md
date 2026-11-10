@@ -117,28 +117,20 @@ generateExcel("invoices.xlsx", invoices) {
 
 # `*` only exists inside `formula { }`
 
-
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" receiver="Formulas">
-<InlineCompilerError :line="8" text="*" message="Unresolved reference `times` for operator `*` on receiver `Column<Number>`" style="--inline-compiler-error-message-size: 1.53rem">
-
 ```kotlin
 import presentation.support.delegated.generateExcel
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula {
+  val total by formula { // [!this text=`formula {` Formulas]
     hours * rate
   }
 
+  // [!error style="--inline-compiler-error-message-size: 1.53rem" * Unresolved reference `times` for operator `*` on receiver `Column<Number>`]
   val cost = hours * rate
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -247,26 +239,19 @@ Real world: KtMongo's filter DSL declares its operators this way.
 
 # The receiver in scope picks the implementation
 
-<InlineValue :line="3" text="ExcelFormulas(row = 2).total()" value="Formula(text==B2*C2)">
-<InlineValue :line="4" text="Evaluate(mapOf(hours to 12, rate to 90)).total()" value="Value(number=1080.0)">
-
 ```kotlin
 import presentation.support.delegated.*
 
 val total: Formulas.() -> Cell = { hours * rate }
 
-ExcelFormulas(row = 2).total()
+ExcelFormulas(row = 2).total() // [!value `ExcelFormulas(row = 2).total()` Formula(text==B2*C2)]
+// [!value `Evaluate(mapOf(hours to 12, rate to 90)).total()` Value(number=1080.0)]
 Evaluate(mapOf(hours to 12, rate to 90)).total()
 ```
-
-</InlineValue>
-</InlineValue>
 
 ---
 
 # The receiver type still checks
-
-<InlineCompilerError :line="5" text="*" message="None of the following candidates is applicable:\n`fun Column<Number>.times(other: Column<Number>): Cell` is inapplicable because of a receiver type mismatch.\n`fun Column<Number>.times(factor: Double): Cell` is inapplicable because of a receiver type mismatch." style="--inline-compiler-error-message-size: 1.1rem">
 
 ```kotlin
 import presentation.support.delegated.generateExcel
@@ -275,11 +260,10 @@ generateExcel("invoices.xlsx", invoices) {
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
+  // [!error style="--inline-compiler-error-message-size: 1.1rem" * None of the following candidates is applicable:\n`fun Column<Number>.times(other: Column<Number>): Cell` is inapplicable because of a receiver type mismatch.\n`fun Column<Number>.times(factor: Double): Cell` is inapplicable because of a receiver type mismatch.]
   val total by formula { customer * hours }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `customer` is a `Column<String>`. Dynamic dispatch picks the implementation at runtime,

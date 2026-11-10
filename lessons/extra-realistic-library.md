@@ -30,12 +30,10 @@ without a lede have no natural home there.
 <DrawnAnnotation text="{ it.sentAt }" label="`Instant`, shown in `ExcelConfig.zone`" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.7003, y: 0.5362 } }"/>
 <DrawnAnnotation text="{ it.status }" label="An `Enum` writes its `name`"  :geometry="{ label: { x: 0.6858, y: 0.5916 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val amount by column { it.amount }
   val paid by column { it.paid }
@@ -48,8 +46,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Customer | Amount | Paid  | IssuedOn   | SentAt              | Status |
 | Ada      | 1080   | FALSE | 2026-09-01 | 2026-09-01 09:30:00 | Open   |
 ```
-
-</TypeHint>
 
 <!--
 Nine overloads now: String, Number, BigDecimal, BigInteger, Enum, Boolean,
@@ -68,22 +64,16 @@ leaves the cell empty. Dates and date-times get a format by default, so Excel sh
 <DrawnAnnotation text="column" :line="2" :on="0" :wait="false" label="The header is an argument"  :geometry="{ label: { x: 0.7576, y: 0.3520 } }"/>
 <DrawnAnnotation text="formula" :line="5" :on="0" :wait="false" label="The same shape for a formula" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.7768, y: 0.6567 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text='formula("Invoice total") {' context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 
-val report = sheet<Invoice> {
+val report = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   column("Customer") { it.customer }
   val hours = column("Hours") { it.hours }
   val rate = column("Rate") { it.rate }
-  formula("Invoice total") { hours * rate }
+  formula("Invoice total") { hours * rate } // [!context Formulas]
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 Named columns, String.invoke and named formulas register immediately. Each carries
@@ -97,15 +87,13 @@ return delegates and still need `by` to discover the property name.
 
 > The value still has to fit Excel's 15 significant digits
 
-<TypeHint :line="2" receiver="SheetBuilder<BigDecimal>">
-
 ```kotlin
 import excel.dsl.*
 import excel.dsl.Column
 import java.math.BigDecimal
 
 val amount: Column<BigDecimal>
-val report = sheet<BigDecimal> {
+val report = sheet<BigDecimal> { // [!this SheetBuilder<BigDecimal>]
   amount = column("Amount") { it }
 }
 val result: CellResult<BigDecimal> =
@@ -115,8 +103,6 @@ println(result)
 ```console
 Value(value=1080.25)
 ```
-
-</TypeHint>
 
 <!--
 The BigDecimal overload preserves the data value; writing checks its precision
@@ -164,8 +150,6 @@ The zone defaults to UTC. `columnNameStyle` moved to the last parameter, so
 
 > Part 2, after “Users add a cell type with an extension”
 
-<InlineCompilerError :line="8" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(format: CellFormat?, width: Int?, value: (Invoice) -> String?)`\n`fun column(format: CellFormat?, width: Int?, value: (Invoice) -> Number?)`\n…and 7 more" style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import excel.dsl.ColumnDelegate
 import excel.dsl.SheetBuilder
@@ -179,11 +163,10 @@ fun SheetBuilder<Invoice>.column(
 ): ColumnDelegate<Number> = column { value(it).cents / 100.0 }
 
 generateExcel("invoices.xlsx", invoices) {
+  // [!error style="--inline-compiler-error-message-size: 1.2rem" column Overload resolution ambiguity between candidates:\n`fun column(format: CellFormat?, width: Int?, value: (Invoice) -> String?)`\n`fun column(format: CellFormat?, width: Int?, value: (Invoice) -> Number?)`\n…and 7 more]
   val price by column { it.price }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 The compiler lists all nine member candidates, with their return types; the slide
@@ -203,8 +186,6 @@ add their own under the same name.
 <DrawnAnnotation text="money" label="No member to compete with"  :geometry="{ label: { x: 0.5551, y: 0.1476 } }"/>
 <DrawnAnnotation text="CellFormat.currency(&quot;€&quot;)" label="The extension picks the format too" color="var(--fundamentals-blue)"  :connect="false" :geometry="{ label: { x: 0.4980, y: 0.2915 } }"/>
 
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 import excel.dsl.ColumnDelegate
@@ -212,7 +193,7 @@ import excel.dsl.ColumnDelegate
 fun <T> SheetBuilder<T>.money(value: (T) -> Money): ColumnDelegate<Number> =
   column(CellFormat.currency("€")) { value(it).cents / 100.0 }
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val price by money { it.price }
 }
@@ -221,8 +202,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Customer | Price     |
 | Ada      | €1,080.00 |
 ```
-
-</TypeHint>
 
 <!--
 It still returns a `ColumnDelegate`, so `by`, the header naming and `formula { }`
@@ -237,12 +216,10 @@ references all keep working: `val gross by formula { price * 1.21 }`.
 
 <DrawnAnnotation text="{ it.billingId }" label="16 digits, one more than Excel keeps" color="red"  :geometry="{ label: { x: 0.7100, y: 0.4570 }, connector: { type: 'quadratic', start: { x: 0.5008, y: 0.4361 }, control: { x: 0.5073, y: 0.4633 }, end: { x: 0.5307, y: 0.4651 } } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val billingId by column { it.billingId }
 }
@@ -252,8 +229,6 @@ Exception in thread "main" java.lang.IllegalArgumentException: BillingId, row 2:
 2026000000000244 has more than 15 significant digits, which Excel cannot store;
 write it as text
 ```
-
-</TypeHint>
 
 <!--
 `Any?` in Part 2 failed silently, a `toString()` in the cell. This fails loudly, at
@@ -272,12 +247,10 @@ magic-move
 
 <DrawnAnnotation text="toString()" label="Text keeps every digit"  :geometry="{ label: { x: 0.7352, y: 0.4542 }, connector: { type: 'quadratic', start: { x: 0.5851, y: 0.4278 }, control: { x: 0.5875, y: 0.4647 }, end: { x: 0.6251, y: 0.4565 } } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val billingId by column { it.billingId.toString() }
 }
@@ -286,8 +259,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Customer | BillingId        |
 | Ada      | 2026000000000244 |
 ```
-
-</TypeHint>
 
 ---
 
@@ -299,28 +270,22 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="CellFormat.currency(&quot;€&quot;)" label="A `@JvmInline value class` over Excel's pattern" color="var(--fundamentals-blue)" />
 <DrawnAnnotation text="formula(euro)" label="Formulas take the same options" />
 
-<TypeHint :line="3" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" text="formula(euro) {" context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 
 val euro = CellFormat.currency("€")
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column(width = 20) { it.customer }
   val hours by column { it.hours }
   val rate by column(euro) { it.rate }
-  val amount by formula(euro) { hours * rate }
+  val amount by formula(euro) { hours * rate } // [!context text=`formula(euro) {` Formulas]
 }
 ```
 ```console
 | Customer | Hours | Rate   | Amount    |
 | Ada      | 12    | €90.00 | €1,080.00 |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 Every overload gained `format: CellFormat? = null, width: Int? = null` in front of the
@@ -337,20 +302,16 @@ fits the header, at least 10 characters. The format also applies to the column's
 <DrawnAnnotation text="autoFilter = true" label="A `var` on `SheetBuilder`, set like a local"  :geometry="{ label: { x: 0.5770, y: 0.3836 } }"/>
 <DrawnAnnotation text="freezePanes = false" label="On by default" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.6123, y: 0.4396 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   autoFilter = true
   freezePanes = false
   val customer by column { it.customer }
   val hours by column { it.hours }
 }
 ```
-
-</TypeHint>
 
 <!--
 The filter covers the header and the data rows, not the totals row, so it is set after
@@ -365,8 +326,6 @@ magic-move
 
 > Part 1, after “`@DslMarker` closes the scope”
 
-<InlineCompilerError :line="5" text="autoFilter" message="'var autoFilter: Boolean' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import excel.dsl.*
 
@@ -374,13 +333,12 @@ generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula {
+    // [!error style="--inline-compiler-error-message-size: 1.2rem" autoFilter 'var autoFilter: Boolean' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.]
     autoFilter = true
     hours * rate
   }
 }
 ```
-
-</InlineCompilerError>
 
 ---
 
@@ -392,17 +350,14 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="lt" :line="6" />
 <DrawnAnnotation text="eq" :line="7" label="Six of them, one per Excel operator"  :geometry="{ label: { x: 0.7470, y: 0.6143 }, connector: { type: 'quadratic', start: { x: 0.4494, y: 0.6163 }, control: { x: 0.5107, y: 0.6420 }, end: { x: 0.5721, y: 0.6163 } } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="formula {" context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula { hours * rate }
-  val large by formula { amount gt 1000 }
+  val large by formula { amount gt 1000 } // [!context text=`formula {` Formulas]
   val short by formula { hours lt 10 }
   val standard by formula { rate eq 80 }
 }
@@ -411,9 +366,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Hours | Rate | Amount | Large    | Short  | Standard |
 | 12    | 90   | =A2*B2 | =C2>1000 | =A2<10 | =B2=80   |
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -447,17 +399,14 @@ an operator. Comparisons return `Formula<Boolean>`. Arithmetic requires the expl
 <DrawnAnnotation text="then" label="Returns a `Branch`, not an `Formula`"  :geometry="{ label: { x: 0.4720, y: 0.6289 }, connector: { type: 'quadratic', start: { x: 0.2950, y: 0.5764 }, control: { x: 0.2967, y: 0.6197 }, end: { x: 0.3156, y: 0.6280 } } }"/>
 <DrawnAnnotation text="otherwise" label="Only `otherwise` finishes the `IF`" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="formula {" context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula { hours * rate }
-  val due by formula {
+  val due by formula { // [!context text=`formula {` Formulas]
     amount gt 1000 then amount * 0.9 otherwise amount
   }
 }
@@ -466,9 +415,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Amount | Due                      |
 | =A2*B2 | =IF(C2>1000, C2*0.9, C2) |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 Infix calls share one precedence and associate to the left:
@@ -484,8 +430,6 @@ magic-move
 
 > Extra “DSL tricks”, after “`infix` reads like the formula”
 
-<InlineCompilerError :line="6" text="amount gt 1000 then amount * 0.9" message="Return type mismatch: expected 'Formula<Number>', actual 'Branch<Number>'.">
-
 ```kotlin
 import excel.dsl.*
 
@@ -494,12 +438,11 @@ generateExcel("invoices.xlsx", invoices) {
   val rate by column { it.rate }
   val amount by formula { hours * rate }
   val due by formula<Number> {
+    // [!error `amount gt 1000 then amount * 0.9` Return type mismatch: expected 'Formula<Number>', actual 'Branch<Number>'.]
     amount gt 1000 then amount * 0.9
   }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 A forgotten `otherwise` is a compile error, not an `IF` without an else branch, which
@@ -515,16 +458,13 @@ Excel would fill with FALSE.
 <DrawnAnnotation text="round" label="`ROUND`, half away from zero like Excel"  :geometry="{ label: { x: 0.7626, y: 0.5412 }, connector: { type: 'quadratic', start: { x: 0.3954, y: 0.4691 }, control: { x: 0.6872, y: 0.4559 }, end: { x: 0.6732, y: 0.5106 } } }"/>
 <DrawnAnnotation text="average" label="`AVERAGE`, `MIN` and `MAX` take a `List` like `sum`" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.4878, y: 0.7703 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val gross by formula { round(hours * rate * 1.21, 2) }
+  val gross by formula { round(hours * rate * 1.21, 2) } // [!context text=`formula {` Formulas]
   val average by formula { average([hours, rate]) }
 }
 ```
@@ -532,9 +472,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Gross                 | Average          |
 | =ROUND(A2*B2*1.21, 2) | =AVERAGE(A2, B2) |
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -545,19 +482,16 @@ generateExcel("invoices.xlsx", invoices) {
 <DrawnAnnotation text="hours.sum()" label="A member extension of `TotalsBuilder`"  :geometry="{ label: { x: 0.4582, y: 0.7189 } }"/>
 <DrawnAnnotation text="customer.label(&quot;Total&quot;)" label="Any column, any type" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.4294, y: 0.7897 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" text="totals {" receiver="SheetBuilder<Invoice>.TotalsBuilder">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula { hours * rate }
 
-  totals {
+  totals { // [!this text=`totals {` SheetBuilder<Invoice>.TotalsBuilder]
     customer.label("Total")
     hours.sum()
     amount.sum()
@@ -569,9 +503,6 @@ generateExcel("invoices.xlsx", invoices) {
 | Ada      | 12          | 90   | =B2*C2      |
 | Total    | =SUM(B2:B6) |      | =SUM(D2:D6) |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 A bold row under the data, not written when there are no rows. `sum`, `average`, `min`,
@@ -590,23 +521,19 @@ magic-move
 <DrawnAnnotation text="amount.total" label="Any formula, not only the shorthands"  :geometry="{ label: { x: 0.2826, y: 0.8108 } }"/>
 <DrawnAnnotation text="sum(amount)" label="The whole column: `SUM(D2:D6)`" color="var(--fundamentals-blue)"  :geometry="{ label: { x: 0.6613, y: 0.6576 } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="7" text="totals {" receiver="SheetBuilder<Invoice>.TotalsBuilder">
-<TypeHint :line="10" text="total {" context="Totals">
-
 ```kotlin
 import excel.dsl.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val rate by column { it.rate }
   val amount by formula { hours * rate }
 
-  totals {
+  totals { // [!this text=`totals {` SheetBuilder<Invoice>.TotalsBuilder]
     customer.label("Total")
     hours.sum()
-    amount.total { round(sum(amount) * 1.21, 2) }
+    amount.total { round(sum(amount) * 1.21, 2) } // [!context text=`total {` Totals]
   }
 }
 ```
@@ -616,25 +543,18 @@ generateExcel("invoices.xlsx", invoices) {
 | Total    | =SUM(B2:B6) |      | =ROUND(SUM(D2:D6)*1.21, 2) |
 ```
 
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
 ---
 
 # `count` and `countNonBlank` count different cells
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="5" text="totals {" receiver="SheetBuilder<Invoice>.TotalsBuilder">
-
 ```kotlin
 import excel.dsl.*
 
-val report = sheet<Invoice> {
+val report = sheet<Invoice> { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
 
-  totals {
+  totals { // [!this text=`totals {` SheetBuilder<Invoice>.TotalsBuilder]
     customer.countNonBlank()
     hours.count()
   }
@@ -644,9 +564,6 @@ val report = sheet<Invoice> {
 | Customer       | Hours        |
 | =COUNTA(A2:A6) | =COUNT(B2:B6) |
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 count takes a numeric column and ignores blanks and errors. countNonBlank takes
@@ -715,8 +632,6 @@ magic-move
 
 > Part 5, after “Context parameter or receiver?”
 
-<InlineCompilerError :line="5" text="hours" occurrence="2" message="Argument type mismatch: actual type is 'Column<Number>', but 'Formula<Number>' was expected.">
-
 ```kotlin
 import excel.dsl.*
 
@@ -724,12 +639,11 @@ generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
 
   totals {
+    // [!error occurrence=2 hours Argument type mismatch: actual type is 'Column<Number>', but 'Formula<Number>' was expected.]
     hours.total { round(hours) }
   }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `round(Column)` is a member of `Formulas`, not of `Totals`. Only `round(Formula)` from
@@ -773,9 +687,6 @@ finally known.
 
 > Extra “Sheets as values”, after “The schema is testable without a file”
 
-<InlineValue :line="8" text="invoiceSheet.evaluate(invoices.first())" value="{Hours=12, Rate=90, Amount=1080.0}">
-<InlineValue :line="9" text="invoiceSheet.totals(invoices)" value="{Amount=5610.0}">
-
 ```kotlin
 import excel.dsl.*
 
@@ -786,12 +697,10 @@ val invoiceSheet = sheet<Invoice> {
   totals { amount.sum() }
 }
 
+// [!value invoiceSheet.evaluate(invoices.first()) {Hours=12, Rate=90, Amount=1080.0}]
 invoiceSheet.evaluate(invoices.first())
-invoiceSheet.totals(invoices)
+invoiceSheet.totals(invoices) // [!value invoiceSheet.totals(invoices) {Amount=5610.0}]
 ```
-
-</InlineValue>
-</InlineValue>
 
 <!--
 The library's tests write every formula, let Apache POI's formula engine compute it as
@@ -802,25 +711,19 @@ Excel would, and check it against `evaluate` and `totals`.
 
 # An Excel formula stores its result too
 
-<TypeHint :line="1" receiver="SheetBuilder<Int>">
-<TypeHint :line="3" text='formula("Double") {' context="Formulas">
-
 ```kotlin
 import excel.dsl.*
 import java.nio.file.Path
 
-val report = sheet<Int> {
+val report = sheet<Int> { // [!this SheetBuilder<Int>]
   val n = column("N") { it }
-  formula("Double") { n * 2 }
+  formula("Double") { n * 2 } // [!context Formulas]
 }
 report.write(Path.of("report.xlsx"), listOf(3))
 ```
 ```xml
 <c r="B2" t="n"><f>A2*2</f><v>6.0</v></c>
 ```
-
-</TypeHint>
-</TypeHint>
 
 <!--
 The cached result is a field in the xlsx file, not a memoization cache in the DSL.
@@ -836,14 +739,12 @@ lets POI write the formula and its numeric, text, Boolean or error result.
 
 <DrawnAnnotation text="CREATE_NEW" label="Fail if the destination already exists" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Int>">
-
 ```kotlin
 import excel.dsl.*
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.CREATE_NEW
 
-val report = sheet<Int> {
+val report = sheet<Int> { // [!this SheetBuilder<Int>]
   column("Number") { it }
 }
 report.write(
@@ -852,8 +753,6 @@ report.write(
   options = arrayOf(CREATE_NEW),
 )
 ```
-
-</TypeHint>
 
 <!--
 The default matches Files.newOutputStream: create the file or truncate it. A write

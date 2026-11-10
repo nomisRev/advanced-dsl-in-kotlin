@@ -24,8 +24,6 @@ where it naturally fits in the main talk (Parts 0 through 6).
 
 > Part 0, after “SheetBuilder.() -> Unit brings members into scope”
 
-<InlineCompilerError :line="6" text="total = 1000.0" message="Captured variable can't be assigned." style="--inline-compiler-error-message-size: 1.1rem">
-
 ```kotlin
 import presentation.support.delegated.SheetBuilder
 import presentation.support.Invoices
@@ -33,11 +31,10 @@ import presentation.support.Invoices
 val total: Double
 sheet<Invoice> {
   val hours by column { it.hours }
+  // [!error style="--inline-compiler-error-message-size: 1.1rem" `total = 1000.0` Captured variable can't be assigned.]
   total = 1000.0
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 In Part 0, `block: SheetBuilder<T>.() -> Unit` brings members into scope.
@@ -108,21 +105,18 @@ system, making non-inline DSL builders first-class citizens.
 
 > KEEP-0463: Warn on capture of mutable variables by escaping lambdas
 
-<Warning :line="6" text="runningTotal" message="Capture of mutable variable 'runningTotal' in escaping lambda.">
-
 ```kotlin no-compile
 var runningTotal = 0.0
 
 sheet<Invoice> {
   val customer by column { it.customer }
   val total by column {
+    // [!warning runningTotal Capture of mutable variable 'runningTotal' in escaping lambda.]
     runningTotal += it.amount
     runningTotal
   }
 }
 ```
-
-</Warning>
 
 <!--
 A DSL contains two distinct classes of lambdas: configuration lambdas (`local once`),
@@ -335,19 +329,16 @@ this eliminates backing property boilerplate.
 
 > Part 4, after “Member extensions keep operators scoped”
 
-<InlineCompilerError :line="2" text="operator" message="'operator' modifier is not applicable to function: must return 'Int'." style="--inline-compiler-error-message-size: 1.1rem">
-
 ```kotlin
 import presentation.support.tricks.Formula
 import presentation.support.tricks.Formulas
 import presentation.support.Column
 
 context(_: Formulas)
+// [!error style="--inline-compiler-error-message-size: 1.1rem" operator 'operator' modifier is not applicable to function: must return 'Int'.]
 operator fun Column<Number>.compareTo(limit: Double): Formula =
   Formula.Greater(Formula.Ref(this), Formula.Constant(limit))
 ```
-
-</InlineCompilerError>
 
 <!--
 In Part 4, member extensions allowed overloading `*` and `+` for `Column<Number>` to produce

@@ -40,8 +40,6 @@ magic-move
 
 # A context parameter is not a receiver
 
-<InlineCompilerError :line="7" text="*" message="Unresolved reference 'times' for operator '*' on receiver of type 'Column<Number>'.">
-
 ```kotlin
 import presentation.support.delegated.Formulas
 import presentation.support.delegated.formula
@@ -53,12 +51,11 @@ interface Formulas {
 }
 
 context(formulas: Formulas)
+// [!error * Unresolved reference 'times' for operator '*' on receiver of type 'Column<Number>'.]
 fun Column<Number>.withVat(): Cell = this * 1.21
 
 val gross by formula { total.withVat() }
 ```
-
-</InlineCompilerError>
 
 ---
 magic-move
@@ -67,7 +64,6 @@ magic-move
 # A context parameter is not a receiver
 
 <DrawnAnnotation text="with(formulas)" label="Turn it into a receiver by hand, in every helper" color="red"  :geometry="{ label: { x: 0.6634, y: 0.5578 } }"/>
-<TypeHint :line="7" receiver="Formulas">
 
 ```kotlin
 import presentation.support.delegated.Formulas
@@ -80,14 +76,12 @@ interface Formulas {
 }
 
 context(formulas: Formulas)
-fun Column<Number>.withVat(): Cell = with(formulas) {
+fun Column<Number>.withVat(): Cell = with(formulas) { // [!this Formulas]
   this@withVat * 1.21
 }
 
 val gross by formula { total.withVat() }
 ```
-
-</TypeHint>
 
 ---
 
@@ -118,18 +112,14 @@ fun Column<Number>.withVat(): Cell = this * 1.21
 <DrawnAnnotation text="*" />
 <DrawnAnnotation text="withVat()" label="`this: Formulas` satisfies `context(formulas: Formulas)`"  :geometry="{ label: { x: 0.7478, y: 0.5376, width: 0.3037 }, connector: { type: 'quadratic', start: { x: 0.5954, y: 0.4182 }, control: { x: 0.6334, y: 0.4493 }, end: { x: 0.6429, y: 0.4925 } } }"/>
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" receiver="Formulas">
-<TypeHint :line="5" text="formula {" receiver="Formulas">
-
 ```kotlin
 import presentation.support.contexts.*
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
-  val gross by formula { total.withVat() }
+  val total by formula { hours * rate } // [!this text=`formula {` Formulas]
+  val gross by formula { total.withVat() } // [!this text=`formula {` Formulas]
 }
 ```
 ```console
@@ -137,19 +127,11 @@ generateExcel("invoices.xlsx", invoices) {
 | 12    | 90   | =A2*B2 | =C2*1.21    |
 ```
 
-</TypeHint>
-</TypeHint>
-</TypeHint>
-
 ---
 magic-move
 ---
 
 # A context lambda brings only the context
-
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" context="Formulas">
-<TypeHint :line="5" text="formula {" context="Formulas">
 
 ```kotlin
 import presentation.support.contexts.generateExcel
@@ -157,28 +139,19 @@ import presentation.support.contexts.column
 import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula { hours * rate }
-  val gross by formula { total.withVat() }
+  val total by formula { hours * rate } // [!context text=`formula {` Formulas]
+  val gross by formula { total.withVat() } // [!context text=`formula {` Formulas]
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ---
 magic-move
 ---
 
 # A context lambda brings only the context
-
-<InlineCompilerError :line="5" text="multiply" message="Unresolved reference `multiply`">
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" context="Formulas">
-<TypeHint :line="7" text="formula {" context="Formulas">
 
 ```kotlin
 import presentation.support.contexts.generateExcel
@@ -187,20 +160,15 @@ import presentation.support.contexts.times
 import presentation.support.contexts.withVat
 import presentation.support.contexts.Formulas
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula {
-    multiply(hours, rate)
+  val total by formula { // [!context text=`formula {` Formulas]
+    multiply(hours, rate) // [!error multiply Unresolved reference `multiply`]
   }
-  val gross by formula { total.withVat() }
+  val gross by formula { total.withVat() } // [!context text=`formula {` Formulas]
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
-</InlineCompilerError>
 
 ---
 magic-move
@@ -209,9 +177,6 @@ magic-move
 # A context lambda brings only the context
 
 <DrawnAnnotation text="contextOf" label="Explicitly calling is always allowed"  :geometry="{ label: { x: 0.3438, y: 0.6038 } }"/>
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-<TypeHint :line="4" text="formula {" context="Formulas">
-<TypeHint :line="7" text="formula {" context="Formulas">
 
 ```kotlin
 import presentation.support.contexts.generateExcel
@@ -220,19 +185,15 @@ import presentation.support.contexts.withVat
 import presentation.support.contexts.contextOf
 import presentation.support.contexts.Formulas
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
-  val total by formula {
+  val total by formula { // [!context text=`formula {` Formulas]
     contextOf<Formulas>().multiply(hours, rate)
   }
-  val gross by formula { total.withVat() }
+  val gross by formula { total.withVat() } // [!context text=`formula {` Formulas]
 }
 ```
-
-</TypeHint>
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -270,13 +231,11 @@ Downstream code can declare a `column` overload for custom types without collisi
 
 <DrawnAnnotation text="{ it.custom }" label="`CustomType`, picks the custom overload" :geometry="{ label: { x: 0.63, y: 0.44 } }" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.contexts.*
 import presentation.support.custom
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
   val hours by column { it.hours }
   val custom by column { it.custom }
@@ -286,8 +245,6 @@ generateExcel("invoices.xlsx", invoices) {
 | customer | hours | custom          |
 | Ada      | 12    | ADA-2026-09-01  |
 ```
-
-</TypeHint>
 
 <!--
 Both library and downstream overloads exist in the same candidate space.
@@ -303,10 +260,6 @@ renaming or import aliases required.
 <DrawnAnnotation text="context(builder: WorkbookBuilder)" label="Satisfied by the marked `workbook { }` receiver"  :geometry="{ label: { x: 0.5439, y: 0.2599 }, connector: { type: 'quadratic', start: { x: 0.2883, y: 0.2271 }, control: { x: 0.2950, y: 0.2514 }, end: { x: 0.3114, y: 0.2586 } } }"/>
 <DrawnAnnotation text="stamp()" :line="5" label="The closest marked scope is the workbook" color="var(--fundamentals-pink)"  :geometry="{ label: { x: 0.3993, y: 0.3850 }, connector: { type: 'quadratic', start: { x: 0.1583, y: 0.3878 }, control: { x: 0.1732, y: 0.3942 }, end: { x: 0.1880, y: 0.3872 } } }"/>
 
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="6" receiver="SheetBuilder<Invoice>">
-<InlineCompilerError :line="8" text="stamp" message="'context(_: WorkbookBuilder) fun stamp(): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.">
-
 ```kotlin
 import presentation.support.marked.WorkbookBuilder
 import presentation.support.marked.workbook
@@ -314,18 +267,15 @@ import presentation.support.marked.workbook
 context(builder: WorkbookBuilder)
 fun stamp() {}
 
-workbook("invoices.xlsx") {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
   stamp()
-  sheet("Q1", q1) {
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     
+    // [!error stamp 'context(_: WorkbookBuilder) fun stamp(): Unit' cannot be called in this context with an implicit receiver. Use an explicit receiver if necessary.]
     stamp()
   }
 }
 ```
-
-</InlineCompilerError>
-</TypeHint>
-</TypeHint>
 
 ---
 
@@ -334,8 +284,6 @@ workbook("invoices.xlsx") {
 > Kotlin 2.4.0: `-Xexplicit-context-arguments`
 
 <DrawnAnnotation text="builder = this@workbook" label="Explicitly specifying is always allowed"/>
-<TypeHint :line="4" receiver="WorkbookBuilder">
-<TypeHint :line="6" receiver="SheetBuilder<Invoice>">
 
 ```kotlin
 import presentation.support.marked.WorkbookBuilder
@@ -344,16 +292,13 @@ import presentation.support.marked.workbook
 context(builder: WorkbookBuilder)
 fun stamp() {}
 
-workbook("invoices.xlsx") {
+workbook("invoices.xlsx") { // [!this WorkbookBuilder]
   stamp()
-  sheet("Q1", q1) {
+  sheet("Q1", q1) { // [!this SheetBuilder<Invoice>]
     stamp(builder = this@workbook)
   }
 }
 ```
-
-</TypeHint>
-</TypeHint>
 
 ---
 class: versus-slide

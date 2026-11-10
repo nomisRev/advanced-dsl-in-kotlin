@@ -23,18 +23,15 @@ DSL `suspend` without giving up the constant memory.
 
 # A `Flow` is not a `Sequence`
 
-<InlineCompilerError :line="1" text="fetchInvoices()" message="Argument type mismatch: actual type is 'Flow<Invoice>',\nbut 'Sequence<uninferred T (of fun <T> generateExcel)>' was expected.">
-
 ```kotlin
 import presentation.support.contexts.generateExcel
 import presentation.support.flow.fetchInvoices
 
+// [!error fetchInvoices() Argument type mismatch: actual type is 'Flow<Invoice>',\nbut 'Sequence<uninferred T (of fun <T> generateExcel)>' was expected.]
 generateExcel("invoices.xlsx", fetchInvoices()) {
   val customer by column { it.customer }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `fetchInvoices()` is a cold `flow { }`: a 100 ms `delay` per row, standing in for an R2DBC
@@ -164,8 +161,6 @@ coroutine. JVM signatures differ (`Sequence` vs `Flow` + `Continuation`), no `@J
 <DrawnAnnotation text="fetched" label="Upstream suspends in `emit` until the row is written" />
 <DrawnAnnotation text="wrote" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="4" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import kotlinx.coroutines.flow.onEach
 import presentation.support.flow.fetchInvoices
@@ -174,7 +169,7 @@ import presentation.support.flow.generateExcel
 val rows = fetchInvoices()
   .onEach { println("fetched ${it.customer}") }
 
-generateExcel("invoices.xlsx", rows) {
+generateExcel("invoices.xlsx", rows) { // [!this SheetBuilder<Invoice>]
   val customer by column {
     println("  wrote ${it.customer}")
     it.customer
@@ -194,8 +189,6 @@ fetched Linus
   wrote Linus
 ```
 
-</TypeHint>
-
 <!--
 Never two `fetched` in a row: the flow is sequential, `emit` is a direct call into the
 collector. That is the backpressure, no buffer anywhere. With a million rows SXSSF holds
@@ -212,8 +205,6 @@ writes, bounded by the buffer's capacity. Opt in when the round trips dominate.
 <DrawnAnnotation text="awaitCancellation()" label="The database stops answering" color="red" />
 <DrawnAnnotation text="1 temp file" label="SXSSF creates the sheet's temp file up front" />
 <DrawnAnnotation text="withTimeoutOrNull(1.seconds)" label="Cancels `collect` while it waits for row three" color="var(--fundamentals-blue)" />
-
-<TypeHint :line="7" receiver="SheetBuilder<Invoice>">
 
 ```kotlin
 import kotlin.time.Duration.Companion.seconds
@@ -233,7 +224,7 @@ val stalled = flow {
 }.onEach { println("${it.customer}, ${sxssfTempFiles().size} temp file") }
 
 withTimeoutOrNull(1.seconds) {
-  generateExcel("invoices.xlsx", stalled) {
+  generateExcel("invoices.xlsx", stalled) { // [!this SheetBuilder<Invoice>]
     val customer by column { it.customer }
   }
 } ?: println("Timed out, ${sxssfTempFiles().size} temp files")
@@ -243,8 +234,6 @@ Ada, 1 temp file
 Linus, 1 temp file
 Timed out, 0 temp files
 ```
-
-</TypeHint>
 
 <!--
 Two rows arrive, then the source hangs, as a stalled connection would. After one second
@@ -264,22 +253,17 @@ take longer than the first two rows, hence the stalled source.
 
 # A column lambda cannot suspend
 
-<InlineCompilerError :line="3" text="fetchEmail" message="Suspension functions can only be called within coroutine body.">
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.flow.fetchEmail
 import presentation.support.flow.fetchInvoices
 import presentation.support.flow.generateExcel
 
-generateExcel("invoices.xlsx", fetchInvoices()) {
+generateExcel("invoices.xlsx", fetchInvoices()) { // [!this SheetBuilder<Invoice>]
   val customer by column { it.customer }
+  // [!error fetchEmail Suspension functions can only be called within coroutine body.]
   val email by column { fetchEmail(it.customer) }
 }
 ```
-
-</TypeHint>
-</InlineCompilerError>
 
 <!--
 `column` takes a `(T) -> String`, stored and run once per row, so it is not a coroutine body
@@ -298,9 +282,6 @@ stored, never inlined (Part 6), and Kotlin 2.4.20 reports the same diagnostic in
 
 <DrawnAnnotation text="DelegatedColumns<T>()" label="Already has `column(value: (T) -> String)`" color="var(--fundamentals-blue)" />
 
-<InlineCompilerError :line="9" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(value: suspend (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`\n`fun column(value: (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`" style="--inline-compiler-error-message-size: 1.05rem">
-<InlineCompilerError :line="10" text="column" message="Overload resolution ambiguity between candidates:\n`fun column(value: suspend (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`\n`fun column(value: (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`" style="--inline-compiler-error-message-size: 1.05rem">
-
 ```kotlin
 @ExcelDsl
 class SheetBuilder<T> : DelegatedColumns<T>() {
@@ -310,13 +291,12 @@ class SheetBuilder<T> : DelegatedColumns<T>() {
 }
 
 generateExcel("invoices.xlsx", fetchInvoices()) {
+  // [!error style="--inline-compiler-error-message-size: 1.05rem" column Overload resolution ambiguity between candidates:\n`fun column(value: suspend (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`\n`fun column(value: (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`]
   val customer by column { it.customer }
+  // [!error style="--inline-compiler-error-message-size: 1.05rem" column Overload resolution ambiguity between candidates:\n`fun column(value: suspend (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`\n`fun column(value: (Invoice) -> String): PropertyDelegateProvider<Any?, ReadOnlyProperty<Any?, Column<String>>>`]
   val email by column { fetchEmail(it.customer) }
 }
 ```
-
-</InlineCompilerError>
-</InlineCompilerError>
 
 <!--
 Every lambda literal fits both `(T) -> String` and `suspend (T) -> String`, and the return
@@ -339,8 +319,6 @@ per suspending column, one after the other, no batching, no concurrency.
 <DrawnAnnotation text=".map { Billed(it, fetchEmail(it.customer)) }" label="The lookup is part of the source" />
 <DrawnAnnotation text="{ it.email }" label="The column only reads" color="var(--fundamentals-blue)" />
 
-<TypeHint :line="6" receiver="SheetBuilder<Billed>">
-
 ```kotlin
 import kotlinx.coroutines.flow.map
 import presentation.support.flow.fetchEmail
@@ -352,7 +330,7 @@ data class Billed(val invoice: Invoice, val email: String)
 val rows = fetchInvoices()
   .map { Billed(it, fetchEmail(it.customer)) }
 
-generateExcel("invoices.xlsx", rows) {
+generateExcel("invoices.xlsx", rows) { // [!this SheetBuilder<Billed>]
   val customer by column { it.invoice.customer }
   val email by column { it.email }
 }
@@ -362,8 +340,6 @@ generateExcel("invoices.xlsx", rows) {
 | Ada      | ada@example.com   |
 | Linus    | linus@example.com |
 ```
-
-</TypeHint>
 
 <!--
 The DSL stays a schema: pure functions from a row to a cell. Everything that waits is in

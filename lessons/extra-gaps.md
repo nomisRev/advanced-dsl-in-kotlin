@@ -31,8 +31,6 @@ zoom: 0.72
 <DrawnAnnotation text="AnnotationTarget.TYPEALIAS" label="Allow the marker on an alias" />
 <DrawnAnnotation text="@ExcelDsl typealias HeaderStyle = CellStyle" label="Marked once, not at every function type" color="var(--fundamentals-pink)" />
 
-<InlineCompilerError :line="15" text="column" message="'fun column(name: String): Unit' cannot be called in this context with an implicit receiver.\nUse an explicit receiver if necessary." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import org.apache.poi.ss.usermodel.CellStyle
 
@@ -50,11 +48,10 @@ class SheetBuilder {
 
 fun SheetBuilder.invoice() = header {
   wrapText = true
+  // [!error style="--inline-compiler-error-message-size: 1.2rem" column 'fun column(name: String): Unit' cannot be called in this context with an implicit receiver.\nUse an explicit receiver if necessary.]
   column("Customer")
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 Part 1 marks `CellStyle` with `@ExcelDsl CellStyle.() -> Unit` at every
@@ -70,19 +67,16 @@ through function types. Checked on 2.5.0-Beta1: the alias alone is enough.
 
 > Part 3, after “The lambda still picks the type”
 
-<InlineCompilerError :line="4" text="*" message="Candidate 'context(formulas: Formulas) fun Column<Number>.times(other: Column<Number>): Cell'\nis inapplicable for operator '*' because of a receiver type mismatch.\nActual receiver type is 'Column<Int>'." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 import presentation.support.covariant.times
 
 generateExcel("invoices.xlsx", invoices) {
   val hours by column { it.hours }
   val rate by column { it.rate }
+  // [!error style="--inline-compiler-error-message-size: 1.2rem" * Candidate 'context(formulas: Formulas) fun Column<Number>.times(other: Column<Number>): Cell'\nis inapplicable for operator '*' because of a receiver type mismatch.\nActual receiver type is 'Column<Int>'.]
   val total by formula { hours * rate }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 Why keep `Column<Int>` at all: a typed read, `row[hours]`, should give back an
@@ -118,13 +112,11 @@ operator fun Column<Number>.times(other: Column<Number>): Cell
 <DrawnAnnotation text="{ it.rate }" label="`Column<Int>`" :connect="false" />
 <DrawnAnnotation text="hours * rate" label="Accepted as `Column<Number>`" color="var(--fundamentals-pink)" />
 
-<TypeHint :line="1" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.covariant.generateExcel
 import presentation.support.covariant.times
 
-generateExcel("invoices.xlsx", invoices) {
+generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
   val hours by column { it.hours }
   val rate by column { it.rate }
   val total by formula { hours * rate }
@@ -134,8 +126,6 @@ generateExcel("invoices.xlsx", invoices) {
 | hours | rate | total  |
 | 12    | 90   | =A2*B2 |
 ```
-
-</TypeHint>
 
 <!--
 The support code has `Int` and `Double` overloads next to `String`. A single
@@ -186,17 +176,14 @@ Compiles on 2.5.0-Beta1 without a flag.
 >
 > Experimental in Kotlin 2.4, `-Xexplicit-context-arguments`
 
-<InlineValue :line="1" text="total.withVat(formulas = Evaluate(mapOf(total to 1080)))" value="Value(number=1306.8)">
-
 ```kotlin
 import presentation.support.contexts.Evaluate
 import presentation.support.contexts.withVat
 import presentation.support.delegated.total
 
+// [!value `total.withVat(formulas = Evaluate(mapOf(total to 1080)))` Value(number=1306.8)]
 total.withVat(formulas = Evaluate(mapOf(total to 1080)))
 ```
-
-</InlineValue>
 
 <!--
 KEEP-0448. The context parameter's name is the argument name, other
@@ -219,21 +206,17 @@ zoom: 0.8
 
 <DrawnAnnotation text="return" label="Returns from `export`: `invoices.xlsx` is never written" color="red"  :geometry="{ label: { x: 0.6787, y: 0.3895 }, connector: { type: 'quadratic', start: { x: 0.3769, y: 0.3950 }, control: { x: 0.4257, y: 0.4159 }, end: { x: 0.4644, y: 0.3937 } } }"/>
 
-<TypeHint :line="2" receiver="SheetBuilder<Invoice>">
-
 ```kotlin
 import presentation.support.tricks.generateExcel
 
 fun export(includeRates: Boolean) {
-  generateExcel("invoices.xlsx", invoices) {
+  generateExcel("invoices.xlsx", invoices) { // [!this SheetBuilder<Invoice>]
     val customer by column { it.customer }
     if (!includeRates) return
     val rate by column { it.rate }
   }
 }
 ```
-
-</TypeHint>
 
 <!--
 `inline` from Part 6 has a second consequence: the block is pasted into
@@ -252,8 +235,6 @@ zoom: 0.8
 
 <DrawnAnnotation text="crossinline" label="Inline, but the block may not leave the caller"  :geometry="{ label: { x: 0.4469, y: 0.4391 }, connector: { type: 'quadratic', start: { x: 0.1941, y: 0.4200 }, control: { x: 0.2316, y: 0.4444 }, end: { x: 0.2713, y: 0.4372 } } }"/>
 
-<InlineCompilerError :line="13" text="return" message="'return' is prohibited here.">
-
 ```kotlin
 import presentation.support.tricks.SheetBuilder
 
@@ -269,13 +250,11 @@ inline fun <T> generateExcel(
 fun export(includeRates: Boolean) {
   generateExcel("invoices.xlsx", invoices) {
     val customer by column { it.customer }
-    if (!includeRates) return
+    if (!includeRates) return // [!error return 'return' is prohibited here.]
     val rate by column { it.rate }
   }
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 `crossinline` is also what `formula { }` would need if it were inline: its
@@ -328,8 +307,6 @@ zoom: 0.8
 
 <DrawnAnnotation text="@SubclassOptInRequired(FormulasImplementation::class)" label="Calling is free, implementing needs an opt-in"  :geometry="{ label: { x: 0.6725, y: 0.4213 } }"/>
 
-<InlineCompilerError :line="11" text="Formulas" occurrence="2" message="This class or interface requires opt-in to be implemented:\nFormulas grows with every release. Implement it at your own risk." style="--inline-compiler-error-message-size: 1.2rem">
-
 ```kotlin
 @RequiresOptIn(
   "Formulas grows with every release. Implement it at your own risk.",
@@ -341,13 +318,12 @@ interface Formulas {
   fun multiply(column: Column<Number>, other: Column<Number>): Cell
 }
 
+// [!error style="--inline-compiler-error-message-size: 1.2rem" occurrence=2 Formulas This class or interface requires opt-in to be implemented:\nFormulas grows with every release. Implement it at your own risk.]
 class AuditFormulas : Formulas {
   override fun multiply(column: Column<Number>, other: Column<Number>) =
     TODO()
 }
 ```
-
-</InlineCompilerError>
 
 <!--
 Part 6 adds `sum` to `Formulas` by extending the interface. That is source
