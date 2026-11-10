@@ -24,8 +24,8 @@ and `./gradlew build`.
 ## Rehearsal
 
 The main talk targets **50 minutes**, with lesson 0 covered by the preceding
-speaker. The presenter timer is a stopwatch with a 50-minute target. Stop at
-the closing slide (83); the slides after it are backup material.
+speaker. The presenter timer is a stopwatch with a 50-minute target. The deck ends on
+the closing slide (72); the backup material lives in `extras.md` (`npm run extras`).
 
 These are rehearsal checkpoints, not measured timings:
 
