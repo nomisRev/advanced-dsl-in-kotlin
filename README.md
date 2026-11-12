@@ -59,24 +59,14 @@ npm run build
 npm run present
 ```
 
-Open the printed display URL on the Mac and the phone remote URL on the iPhone,
-on the same local network. No internet connection is required. This serves the
-built `dist/` files and relays navigation locally; an ordinary static host only
-synchronizes tabs in the same browser. Use `PORT=4175 npm run present` to change
-the default port (4174). Rebuild and reload both devices after source changes.
+The theme's `slidev-kotlin-present` serves the built `dist/` on port 4174
+(`PORT=4175 npm run present` changes it) and prints the display link for the
+Mac plus a QR code for the phone. Scan it on the same network; no internet
+connection is required. Tap the right half to advance or the left half to go
+back. On the Mac, `/presenter/1` is still Slidev's presenter console with the
+stopwatch.
 
-The phone controls the display in one direction to prevent delayed display
-transitions from sending old slide numbers back. Tap the right half to advance
-or the left half to go back. The remote mounts only the current and upcoming
-slides. This local server is intended for a trusted presentation network, not
-public hosting.
-
-With the server running, `npm run test:remote` checks the full deck in isolated
-Chromium display and phone contexts, including reveals, backwards navigation,
-speaker notes, and reconnecting. It does not replace testing on physical Safari.
-
-The remote shows how many displays are connected and reconnects automatically
-after a server restart. Reload both devices once when updating the application.
-`npm run test:remote-restart` checks server restart recovery on a separate test
-server (port 4175). Set `REMOTE_URL=http://<Mac-LAN-IP>:4175` to also test from
-the LAN address to the localhost display.
+Only a page opened from the printed link can move the slides. Present over a
+hotspot or a password-protected network: the link travels over plain HTTP.
+After a rebuild, reload both devices. See "Presenting with a phone remote" in
+the theme's README.
